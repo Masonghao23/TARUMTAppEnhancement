@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "484059572413",
+    "project_id": "tarumt-app-enhancement",
+    "storage_bucket": "tarumt-app-enhancement.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:484059572413:android:f7079a059f73dbbcc12fd4",
+        "android_client_info": {
+          "package_name": "com.example.app_enhancement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASmWyur_gKjtBE0C4bhyq-goPJNIG02zE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
