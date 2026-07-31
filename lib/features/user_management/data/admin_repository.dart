@@ -20,6 +20,7 @@ class AdminRepository {
     required String name,
     required String campusId,
     required String role,
+    List<String> courseIds = const [],
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -30,6 +31,7 @@ class AdminRepository {
           'name': name,
           'campusId': campusId,
           'role': role,
+          if (courseIds.isNotEmpty) 'courseIds': courseIds,
         },
       );
 
@@ -38,6 +40,12 @@ class AdminRepository {
         throw AdminCreateUserException(data['error'].toString());
       }
       if (data is Map && data['userId'] != null) {
+        if (data['enrollmentWarning'] != null) {
+          throw AdminCreateUserException(
+            'Account created, but enrollment failed: '
+            '${data['enrollmentWarning']}',
+          );
+        }
         return data['userId'].toString();
       }
       throw const AdminCreateUserException('Unexpected response from server.');

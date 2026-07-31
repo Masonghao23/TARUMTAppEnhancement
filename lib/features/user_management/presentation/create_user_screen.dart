@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../attendance/providers.dart' show coursesProvider;
 import '../data/admin_repository.dart';
 import '../providers.dart';
 
@@ -21,6 +22,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
   final _passwordController = TextEditingController();
   String _role = 'student';
   bool _isSubmitting = false;
+  final Set<String> _selectedCourseIds = {};
 
   @override
   void dispose() {
@@ -44,6 +46,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
             name: _nameController.text.trim(),
             campusId: _campusIdController.text.trim(),
             role: _role,
+            courseIds: _role == 'student' ? _selectedCourseIds.toList() : const [],
           );
 
       ref.invalidate(userSearchProvider);
@@ -56,7 +59,8 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
       Navigator.of(context).pop(true);
     } on AdminCreateUserException catch (e) {
       _showError(e.message);
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('CreateUserScreen._submit failed: $e\n$stackTrace');
       _showError('Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -87,6 +91,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final coursesAsync = ref.watch(coursesProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Create account')),
@@ -115,7 +120,10 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                   ],
                   selected: {_role},
                   onSelectionChanged: (value) {
-                    setState(() => _role = value.first);
+                    setState(() {
+                      _role = value.first;
+                      if (_role != 'student') _selectedCourseIds.clear();
+                    });
                     _formKey.currentState?.validate();
                   },
                   style: SegmentedButton.styleFrom(
@@ -168,6 +176,62 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                     ],
                   ),
                 ),
+                if (_role == 'student') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SectionLabel('Course enrollment'),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Optional — pick the courses this student is enrolled in.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        coursesAsync.when(
+                          data: (courses) {
+                            if (courses.isEmpty) {
+                              return const Text('No courses available yet.');
+                            }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: courses.map((course) {
+                                final selected = _selectedCourseIds.contains(
+                                  course.id,
+                                );
+                                return FilterChip(
+                                  label: Text(course.label),
+                                  selected: selected,
+                                  onSelected: (value) {
+                                    setState(() {
+                                      if (value) {
+                                        _selectedCourseIds.add(course.id);
+                                      } else {
+                                        _selectedCourseIds.remove(course.id);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          },
+                          loading: () => const LinearProgressIndicator(),
+                          error: (_, _) => Text(
+                            'Could not load courses',
+                            style: TextStyle(color: scheme.error),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(18),
