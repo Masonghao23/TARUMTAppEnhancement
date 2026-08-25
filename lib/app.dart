@@ -29,15 +29,13 @@ class _AuthGate extends ConsumerWidget {
     final authState = ref.watch(authStateChangesProvider);
 
     return authState.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, _) => Scaffold(
-        body: Center(child: Text('Something went wrong: $error')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) =>
+          Scaffold(body: Center(child: Text('Something went wrong: $error'))),
       data: (state) {
-        final session = state.session ??
-            ref.read(authRepositoryProvider).currentSession;
+        final session =
+            state.session ?? ref.read(authRepositoryProvider).currentSession;
         if (session == null) {
           return const LoginScreen();
         }

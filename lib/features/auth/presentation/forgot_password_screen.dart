@@ -86,7 +86,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Forgot your password?', style: textTheme.headlineMedium),
+                  Text(
+                    'Forgot your password?',
+                    style: textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Enter the email linked to your account and we will '

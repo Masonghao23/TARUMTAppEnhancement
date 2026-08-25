@@ -11,24 +11,63 @@ class AppTheme {
 
   static const Color _seed = Color(0xFF4F63F0);
 
+  // A warm "campus amber" standing in for the seed-derived tertiary, used
+  // sparingly as the accent that pairs with the indigo primary (role chips,
+  // ID-card edge, small highlights) — the algorithmic tertiary from
+  // ColorScheme.fromSeed reads too close to primary to read as a second hue.
+  static const Color _accentLight = Color(0xFFB9660A);
+  static const Color _accentContainerLight = Color(0xFFFFEACB);
+  static const Color _accentDark = Color(0xFFF0B15A);
+  static const Color _accentContainerDark = Color(0xFF5C4108);
+
+  // Not part of ColorScheme (Material3 has no standalone "success" slot) —
+  // used wherever "available"/"bound"/"on time" needs to read as positive
+  // rather than borrowing tertiary, which is now the amber accent above.
+  static const Color _successLight = Color(0xFF0E9A5C);
+  static const Color _successContainerLight = Color(0xFFDCF6E8);
+  static const Color _successDark = Color(0xFF3DD68C);
+  static const Color _successContainerDark = Color(0xFF0F3A26);
+
+  static Color success(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? _successDark
+      : _successLight;
+
+  static Color successContainer(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? _successContainerDark
+      : _successContainerLight;
+
   static const double radiusSm = 12;
   static const double radiusMd = 16;
   static const double radiusLg = 24;
   static const double radiusPill = 999;
 
   static ThemeData light() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seed,
-      brightness: Brightness.light,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: _seed,
+          brightness: Brightness.light,
+        ).copyWith(
+          tertiary: _accentLight,
+          onTertiary: Colors.white,
+          tertiaryContainer: _accentContainerLight,
+          onTertiaryContainer: _accentLight,
+        );
     return _base(scheme);
   }
 
   static ThemeData dark() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seed,
-      brightness: Brightness.dark,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: _seed,
+          brightness: Brightness.dark,
+        ).copyWith(
+          tertiary: _accentDark,
+          onTertiary: Color(0xFF3A2800),
+          tertiaryContainer: _accentContainerDark,
+          onTertiaryContainer: _accentDark,
+        );
     return _base(scheme);
   }
 
@@ -57,10 +96,7 @@ class AppTheme {
         fontSize: 14,
         color: scheme.onSurfaceVariant,
       ),
-      labelLarge: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
+      labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
       labelMedium: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w600,
@@ -83,7 +119,9 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHigh,
-        hintStyle: TextStyle(color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+        hintStyle: TextStyle(
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
           borderSide: BorderSide.none,
@@ -116,9 +154,7 @@ class AppTheme {
           foregroundColor: scheme.onPrimary,
           disabledBackgroundColor: scheme.onSurface.withValues(alpha: 0.12),
           minimumSize: const Size.fromHeight(54),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-          ),
+          shape: const StadiumBorder(),
           textStyle: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -128,9 +164,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(54),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-          ),
+          shape: const StadiumBorder(),
           textStyle: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -141,9 +175,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(54),
           side: BorderSide(color: scheme.outlineVariant),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-          ),
+          shape: const StadiumBorder(),
           textStyle: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,

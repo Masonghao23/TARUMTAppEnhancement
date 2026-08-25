@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_logo.dart';
-import '../../attendance/presentation/create_session_screen.dart';
+import '../../../core/widgets/floating_nav_bar.dart';
+import '../../attendance/presentation/start_session_screen.dart';
 import '../../attendance/presentation/staff_sessions_screen.dart';
 import '../../attendance/presentation/student_attendance_screen.dart';
 import '../../auth/providers.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../parking/presentation/parking_dashboard_screen.dart';
 import '../data/models.dart';
 import '../providers.dart';
 import 'create_user_screen.dart';
@@ -24,7 +26,13 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 1;
 
-  static const _titles = ['Attendance', 'Home', 'Profile', 'Directory'];
+  static const _titles = [
+    'Attendance',
+    'Parking',
+    'Home',
+    'Profile',
+    'Directory',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -33,34 +41,40 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final isAdmin = profileAsync.value?.role == UserRole.admin;
     final isStaff = profileAsync.value?.role == UserRole.staff || isAdmin;
     const attendanceIndex = 0;
-    final directoryIndex = isStaff ? 3 : -1;
+    final directoryIndex = isStaff ? 4 : -1;
 
-    final destinations = <NavigationDestination>[
-      const NavigationDestination(
-        icon: Icon(Icons.qr_code_scanner_outlined),
-        selectedIcon: Icon(Icons.qr_code_scanner),
+    final destinations = <FloatingNavItem>[
+      const FloatingNavItem(
+        icon: Icons.qr_code_scanner_outlined,
+        selectedIcon: Icons.qr_code_scanner,
         label: 'Attendance',
       ),
-      const NavigationDestination(
-        icon: Icon(Icons.home_outlined),
-        selectedIcon: Icon(Icons.home),
+      const FloatingNavItem(
+        icon: Icons.local_parking_outlined,
+        selectedIcon: Icons.local_parking,
+        label: 'Parking',
+      ),
+      const FloatingNavItem(
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
         label: 'Home',
       ),
-      const NavigationDestination(
-        icon: Icon(Icons.person_outline),
-        selectedIcon: Icon(Icons.person),
+      const FloatingNavItem(
+        icon: Icons.person_outline,
+        selectedIcon: Icons.person,
         label: 'Profile',
       ),
       if (isStaff)
-        const NavigationDestination(
-          icon: Icon(Icons.groups_outlined),
-          selectedIcon: Icon(Icons.groups),
+        const FloatingNavItem(
+          icon: Icons.groups_outlined,
+          selectedIcon: Icons.groups,
           label: 'Directory',
         ),
     ];
 
     final pages = <Widget>[
       isStaff ? const StaffSessionsScreen() : const StudentAttendanceScreen(),
+      const ParkingDashboardScreen(),
       const HomeScreen(),
       const ProfileScreen(),
       if (isStaff) const StaffUserSearchScreen(),
@@ -96,10 +110,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       body: IndexedStack(index: safeIndex, children: pages),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: FloatingNavBar(
         selectedIndex: safeIndex,
         onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: destinations,
+        items: destinations,
       ),
       floatingActionButton: _buildFab(
         context: context,
@@ -122,20 +136,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }) {
     if (isAdmin && safeIndex == directoryIndex) {
       return FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CreateUserScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const CreateUserScreen())),
         icon: const Icon(Icons.person_add_alt_1_outlined),
         label: const Text('New account'),
       );
     }
     if (isStaff && safeIndex == attendanceIndex) {
       return FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CreateSessionScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const StartSessionScreen())),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New session'),
+        label: const Text('Start session'),
       );
     }
     return null;

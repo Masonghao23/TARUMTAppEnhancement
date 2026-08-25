@@ -107,6 +107,78 @@ class ClassSession {
   final String? roomName;
 }
 
+enum AttendanceStatus { present, late, absent, leave, pending }
+
+AttendanceStatus attendanceStatusFromString(String value) {
+  switch (value) {
+    case 'late':
+      return AttendanceStatus.late;
+    case 'absent':
+      return AttendanceStatus.absent;
+    case 'leave':
+      return AttendanceStatus.leave;
+    case 'pending':
+      return AttendanceStatus.pending;
+    default:
+      return AttendanceStatus.present;
+  }
+}
+
+extension AttendanceStatusLabel on AttendanceStatus {
+  String get wireValue => name;
+
+  String get label {
+    switch (this) {
+      case AttendanceStatus.present:
+        return 'Present';
+      case AttendanceStatus.late:
+        return 'Late';
+      case AttendanceStatus.absent:
+        return 'Absent';
+      case AttendanceStatus.leave:
+        return 'Leave';
+      case AttendanceStatus.pending:
+        return 'Pending';
+    }
+  }
+}
+
+/// One enrolled student's attendance status for a specific session, as
+/// returned by get_session_roster() — a real recorded row when
+/// [recordedAt] is non-null, otherwise a value computed server-side
+/// ('absent' once the session has ended and the student never scanned,
+/// 'pending' while it's still live). [isManual] distinguishes a lecturer's
+/// override from a genuine QR scan.
+class RosterEntry {
+  const RosterEntry({
+    required this.studentId,
+    required this.studentName,
+    required this.status,
+    required this.isManual,
+    this.recordedAt,
+  });
+
+  factory RosterEntry.fromMap(Map<String, dynamic> map) {
+    return RosterEntry(
+      studentId: map['student_id'] as String,
+      studentName: map['student_name'] as String? ?? '',
+      status: attendanceStatusFromString(
+        map['status'] as String? ?? 'pending',
+      ),
+      isManual: map['method'] == 'manual',
+      recordedAt: map['recorded_at'] != null
+          ? DateTime.parse(map['recorded_at'] as String)
+          : null,
+    );
+  }
+
+  final String studentId;
+  final String studentName;
+  final AttendanceStatus status;
+  final bool isManual;
+  final DateTime? recordedAt;
+}
+
 class AttendanceRecord {
   const AttendanceRecord({
     required this.id,
@@ -193,6 +265,316 @@ class AttendanceResult {
   final String? reason;
   final bool alreadyCheckedIn;
   final double? distanceMeters;
+}
+
+enum SessionSlotType { lecture, tutorial, practical }
+
+SessionSlotType _slotTypeFromString(String value) {
+  switch (value) {
+    case 'tutorial':
+      return SessionSlotType.tutorial;
+    case 'practical':
+      return SessionSlotType.practical;
+    default:
+      return SessionSlotType.lecture;
+  }
+}
+
+enum TimetableOccurrenceStatus { normal, cancelled, movedAway, movedIn, added }
+
+TimetableOccurrenceStatus _occurrenceStatusFromString(String value) {
+  switch (value) {
+    case 'cancelled':
+      return TimetableOccurrenceStatus.cancelled;
+    case 'moved_away':
+      return TimetableOccurrenceStatus.movedAway;
+    case 'moved_in':
+      return TimetableOccurrenceStatus.movedIn;
+    case 'added':
+      return TimetableOccurrenceStatus.added;
+    default:
+      return TimetableOccurrenceStatus.normal;
+  }
+}
+
+/// An hour:minute wall-clock value, as returned by Postgres `time` columns
+/// ("HH:MM:SS" over PostgREST) — deliberately not a DateTime, since these
+/// are schedule-of-day values with no date attached.
+class WallClockTime {
+  const WallClockTime(this.hour, this.minute);
+
+  factory WallClockTime.parse(String raw) {
+    final parts = raw.split(':');
+    return WallClockTime(int.parse(parts[0]), int.parse(parts[1]));
+  }
+
+  final int hour;
+  final int minute;
+
+  double get decimalHours => hour + minute / 60;
+}
+
+/// One occurrence of a scheduled class within a single Mon-Sun week, as
+/// returned by get_my_timetable_week() — recurrence/exception handling all
+/// happens server-side, so the client only ever renders whatever comes
+/// back here.
+class TimetableOccurrence {
+  const TimetableOccurrence({
+    required this.occurrenceDate,
+    required this.courseId,
+    required this.courseCode,
+    required this.courseName,
+    required this.sessionType,
+    required this.startTime,
+    required this.endTime,
+    required this.roomId,
+    required this.roomName,
+    required this.status,
+    this.movedToDate,
+    this.movedToStartTime,
+    this.movedToEndTime,
+    this.movedToRoomId,
+    this.movedToRoomName,
+    this.scheduleId,
+    this.exceptionId,
+  });
+
+  factory TimetableOccurrence.fromMap(Map<String, dynamic> map) {
+    return TimetableOccurrence(
+      occurrenceDate: DateTime.parse(map['occurrence_date'] as String),
+      courseId: map['course_id'] as String,
+      courseCode: map['course_code'] as String? ?? '',
+      courseName: map['course_name'] as String? ?? '',
+      sessionType: _slotTypeFromString(
+        map['session_type'] as String? ?? 'lecture',
+      ),
+      startTime: WallClockTime.parse(map['start_time'] as String),
+      endTime: WallClockTime.parse(map['end_time'] as String),
+      roomId: map['room_id'] as String,
+      roomName: map['room_name'] as String? ?? '',
+      status: _occurrenceStatusFromString(map['status'] as String? ?? 'normal'),
+      movedToDate: map['moved_to_date'] != null
+          ? DateTime.parse(map['moved_to_date'] as String)
+          : null,
+      movedToStartTime: map['moved_to_start_time'] != null
+          ? WallClockTime.parse(map['moved_to_start_time'] as String)
+          : null,
+      movedToEndTime: map['moved_to_end_time'] != null
+          ? WallClockTime.parse(map['moved_to_end_time'] as String)
+          : null,
+      movedToRoomId: map['moved_to_room_id'] as String?,
+      movedToRoomName: map['moved_to_room_name'] as String?,
+      // Only present in get_lecturer_occurrences' management-facing
+      // output — get_my_timetable_week (student-facing) doesn't return
+      // these columns at all, so they parse to null there, which is
+      // correct: students have no use for them.
+      scheduleId: map['schedule_id'] as String?,
+      exceptionId: map['exception_id'] as String?,
+    );
+  }
+
+  final DateTime occurrenceDate;
+  final String courseId;
+  final String courseCode;
+  final String courseName;
+  final SessionSlotType sessionType;
+  final WallClockTime startTime;
+  final WallClockTime endTime;
+  final String roomId;
+  final String roomName;
+  final TimetableOccurrenceStatus status;
+  final DateTime? movedToDate;
+  final WallClockTime? movedToStartTime;
+  final WallClockTime? movedToEndTime;
+  final String? movedToRoomId;
+  final String? movedToRoomName;
+  final String? scheduleId;
+  final String? exceptionId;
+
+  double get durationHours => endTime.decimalHours - startTime.decimalHours;
+}
+
+/// The shared term window every class_schedule row currently uses —
+/// effective_from is Monday-aligned (see timetable_seed.sql) so "Week N" in
+/// the student-facing UI can be computed as a plain day-count from it,
+/// without needing partial-week handling.
+class TermInfo {
+  const TermInfo({required this.effectiveFrom, required this.termWeeks});
+
+  final DateTime effectiveFrom;
+  final int termWeeks;
+}
+
+/// One of a lecturer's own timetable slots for a specific date, as returned
+/// by get_lecturer_schedule_for_date() — already excludes anything that's
+/// been moved away or cancelled for that date, so every row here is really
+/// startable. [sessionId] is populated when a class_sessions row already
+/// exists for it (tap should open that session instead of starting a new
+/// one).
+class LecturerSlot {
+  const LecturerSlot({
+    required this.scheduleId,
+    required this.exceptionId,
+    required this.courseId,
+    required this.courseCode,
+    required this.courseName,
+    required this.sessionType,
+    required this.startTime,
+    required this.endTime,
+    required this.roomId,
+    required this.roomName,
+    this.sessionId,
+    this.sessionStatus,
+  });
+
+  factory LecturerSlot.fromMap(Map<String, dynamic> map) {
+    return LecturerSlot(
+      scheduleId: map['schedule_id'] as String?,
+      exceptionId: map['exception_id'] as String?,
+      courseId: map['course_id'] as String,
+      courseCode: map['course_code'] as String? ?? '',
+      courseName: map['course_name'] as String? ?? '',
+      sessionType: _slotTypeFromString(
+        map['session_type'] as String? ?? 'lecture',
+      ),
+      startTime: WallClockTime.parse(map['start_time'] as String),
+      endTime: WallClockTime.parse(map['end_time'] as String),
+      roomId: map['room_id'] as String,
+      roomName: map['room_name'] as String? ?? '',
+      sessionId: map['session_id'] as String?,
+      sessionStatus: map['session_status'] as String?,
+    );
+  }
+
+  final String? scheduleId;
+  final String? exceptionId;
+  final String courseId;
+  final String courseCode;
+  final String courseName;
+  final SessionSlotType sessionType;
+  final WallClockTime startTime;
+  final WallClockTime endTime;
+  final String roomId;
+  final String roomName;
+  final String? sessionId;
+  final String? sessionStatus;
+
+  bool get isStarted => sessionId != null;
+}
+
+/// Decoded response of the start_scheduled_session RPC.
+class StartSessionResult {
+  const StartSessionResult({
+    required this.success,
+    this.sessionId,
+    this.alreadyStarted = false,
+    this.reason,
+  });
+
+  factory StartSessionResult.fromMap(Map<String, dynamic> map) {
+    return StartSessionResult(
+      success: map['success'] as bool? ?? false,
+      sessionId: map['sessionId'] as String?,
+      alreadyStarted: map['alreadyStarted'] as bool? ?? false,
+      reason: map['reason'] as String?,
+    );
+  }
+
+  final bool success;
+  final String? sessionId;
+  final bool alreadyStarted;
+  final String? reason;
+}
+
+/// Hour-based attendance for one student/course, from
+/// calculate_course_attendance_hours() — [totalHours] is the scheduled
+/// hours of every occurrence that's already passed, [attendedHours] the
+/// subset of those the student actually attended.
+class CourseAttendanceHours {
+  const CourseAttendanceHours({
+    required this.attendedHours,
+    required this.totalHours,
+  });
+
+  factory CourseAttendanceHours.fromMap(Map<String, dynamic> map) {
+    return CourseAttendanceHours(
+      attendedHours: (map['attended_hours'] as num).toDouble(),
+      totalHours: (map['total_hours'] as num).toDouble(),
+    );
+  }
+
+  final double attendedHours;
+  final double totalHours;
+
+  /// Null (rather than 0) when nothing has happened yet to have a
+  /// percentage at all — callers should show a placeholder, not "0%".
+  double? get percent =>
+      totalHours <= 0 ? null : (attendedHours / totalHours) * 100;
+}
+
+/// One recurring weekly slot a lecturer owns, as edited on the Manage
+/// Timetable screen — distinct from [LecturerSlot], which is a specific
+/// day's occurrence rather than the recurring template itself.
+class ScheduleSlot {
+  const ScheduleSlot({
+    required this.id,
+    required this.courseId,
+    required this.courseCode,
+    required this.courseName,
+    required this.sessionType,
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.roomId,
+    required this.roomName,
+  });
+
+  factory ScheduleSlot.fromMap(Map<String, dynamic> map) {
+    final course = map['courses'] as Map<String, dynamic>?;
+    final facility = map['facilities'] as Map<String, dynamic>?;
+    return ScheduleSlot(
+      id: map['id'] as String,
+      courseId: map['course_id'] as String,
+      courseCode: course?['course_code'] as String? ?? '',
+      courseName: course?['course_name'] as String? ?? '',
+      sessionType: _slotTypeFromString(
+        map['session_type'] as String? ?? 'lecture',
+      ),
+      dayOfWeek: map['day_of_week'] as int,
+      startTime: WallClockTime.parse(map['start_time'] as String),
+      endTime: WallClockTime.parse(map['end_time'] as String),
+      roomId: map['room_id'] as String,
+      roomName: facility?['room_name'] as String? ?? '',
+    );
+  }
+
+  final String id;
+  final String courseId;
+  final String courseCode;
+  final String courseName;
+  final SessionSlotType sessionType;
+  final int dayOfWeek;
+  final WallClockTime startTime;
+  final WallClockTime endTime;
+  final String roomId;
+  final String roomName;
+}
+
+/// Decoded response of upsert_class_schedule/create_schedule_exception.
+class ScheduleActionResult {
+  const ScheduleActionResult({required this.success, this.reason, this.id});
+
+  factory ScheduleActionResult.fromMap(Map<String, dynamic> map) {
+    return ScheduleActionResult(
+      success: map['success'] as bool? ?? false,
+      reason: map['reason'] as String?,
+      id: (map['scheduleId'] ?? map['exceptionId']) as String?,
+    );
+  }
+
+  final bool success;
+  final String? reason;
+  final String? id;
 }
 
 /// Decoded {session_id, token} payload from a scanned QR code.

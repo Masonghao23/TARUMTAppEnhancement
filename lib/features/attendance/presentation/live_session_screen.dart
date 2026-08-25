@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../data/qr_token.dart';
 import '../providers.dart';
+import 'manage_attendance_screen.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
   const LiveSessionScreen({super.key, required this.session});
@@ -67,7 +68,17 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   Future<void> _endSession() async {
     setState(() => _ending = true);
     try {
-      await ref.read(attendanceRepositoryProvider).endSession(widget.session.id);
+      await ref
+          .read(attendanceRepositoryProvider)
+          .endSession(widget.session.id);
+      ref.invalidate(mySessionsProvider(widget.session.lecturerId));
+      ref.invalidate(activeSessionsProvider(widget.session.lecturerId));
+      final start = widget.session.startTime;
+      ref.invalidate(
+        lecturerScheduleForDateProvider(
+          DateTime(start.year, start.month, start.day),
+        ),
+      );
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) setState(() => _ending = false);
@@ -105,6 +116,18 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       appBar: AppBar(
         title: Text(session.courseName ?? 'Class session'),
         actions: [
+          IconButton(
+            tooltip: 'Manage attendance',
+            icon: const Icon(Icons.checklist_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ManageAttendanceScreen(
+                  sessionId: session.id,
+                  courseName: session.courseName,
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: TextButton(
@@ -243,11 +266,15 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
                                 children: [
                                   Text(
                                     name,
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
                                   ),
                                   Text(
                                     _formatTime(record.scanTimestamp),
-                                    style: Theme.of(context).textTheme.bodyMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
                                   ),
                                 ],
                               ),

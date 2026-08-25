@@ -18,11 +18,8 @@ class AppLogo extends StatelessWidget {
       'assets/images/tarumt_logo.png',
       height: height,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Icon(
-        Icons.school_rounded,
-        size: height,
-        color: scheme.primary,
-      ),
+      errorBuilder: (context, error, stackTrace) =>
+          Icon(Icons.school_rounded, size: height, color: scheme.primary),
     );
 
     if (!card) return image;

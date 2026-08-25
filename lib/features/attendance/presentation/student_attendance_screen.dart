@@ -5,7 +5,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../user_management/providers.dart';
 import '../data/models.dart';
 import '../providers.dart';
+import 'course_attendance_screen.dart';
 import 'scan_screen.dart';
+import 'timetable_screen.dart';
 
 class StudentAttendanceScreen extends ConsumerWidget {
   const StudentAttendanceScreen({super.key});
@@ -62,16 +64,32 @@ class StudentAttendanceScreen extends ConsumerWidget {
                     foregroundColor: scheme.primary,
                     minimumSize: const Size(0, 44),
                   ),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ScanScreen()),
-                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const ScanScreen())),
                   icon: const Icon(Icons.qr_code_scanner_rounded),
                   label: const Text('Scan'),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+          _NavLinkRow(
+            icon: Icons.calendar_month_outlined,
+            label: 'My Timetable',
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const TimetableScreen())),
+          ),
+          const SizedBox(height: 8),
+          _NavLinkRow(
+            icon: Icons.pie_chart_outline_rounded,
+            label: 'Attendance by Course',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CourseAttendanceScreen()),
+            ),
+          ),
+          const SizedBox(height: 20),
           Text('History', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           historyAsync.when(
@@ -89,10 +107,12 @@ class StudentAttendanceScreen extends ConsumerWidget {
               }
               return Column(
                 children: entries
-                    .map((entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _HistoryTile(entry: entry),
-                        ))
+                    .map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _HistoryTile(entry: entry),
+                      ),
+                    )
                     .toList(),
               );
             },
@@ -113,6 +133,81 @@ class StudentAttendanceScreen extends ConsumerWidget {
   }
 }
 
+class _NavLinkRow extends StatelessWidget {
+  const _NavLinkRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: scheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Icon/colour for a status string — status can now be a lecturer's manual
+/// override ('absent'/'leave'), not just a real scan, so [_HistoryTile] must
+/// reflect it honestly rather than assuming every record means "checked in".
+IconData _historyStatusIcon(AttendanceStatus status) {
+  switch (status) {
+    case AttendanceStatus.present:
+      return Icons.check_circle_rounded;
+    case AttendanceStatus.late:
+      return Icons.schedule_rounded;
+    case AttendanceStatus.absent:
+      return Icons.cancel_rounded;
+    case AttendanceStatus.leave:
+      return Icons.event_busy_rounded;
+    case AttendanceStatus.pending:
+      return Icons.hourglass_empty_rounded;
+  }
+}
+
+Color _historyStatusColor(BuildContext context, AttendanceStatus status) {
+  final scheme = Theme.of(context).colorScheme;
+  switch (status) {
+    case AttendanceStatus.present:
+      return AppTheme.success(context);
+    case AttendanceStatus.late:
+      return scheme.tertiary;
+    case AttendanceStatus.absent:
+      return scheme.error;
+    case AttendanceStatus.leave:
+      return scheme.secondary;
+    case AttendanceStatus.pending:
+      return scheme.onSurfaceVariant;
+  }
+}
+
 class _HistoryTile extends StatelessWidget {
   const _HistoryTile({required this.entry});
 
@@ -121,6 +216,8 @@ class _HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final status = attendanceStatusFromString(entry.record.status);
+    final color = _historyStatusColor(context, status);
     final dt = entry.record.scanTimestamp.toLocal();
     final dateLabel =
         '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} · '
@@ -139,24 +236,27 @@ class _HistoryTile extends StatelessWidget {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: scheme.tertiaryContainer,
+              color: color.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
-            child: Icon(
-              Icons.check_circle_rounded,
-              color: scheme.onTertiaryContainer,
-              size: 20,
-            ),
+            child: Icon(_historyStatusIcon(status), color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(entry.courseName, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  entry.courseName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 Text(dateLabel, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
+          ),
+          Text(
+            status.label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
         ],
       ),

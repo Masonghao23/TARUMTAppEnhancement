@@ -46,7 +46,9 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
             name: _nameController.text.trim(),
             campusId: _campusIdController.text.trim(),
             role: _role,
-            courseIds: _role == 'student' ? _selectedCourseIds.toList() : const [],
+            courseIds: _role == 'student'
+                ? _selectedCourseIds.toList()
+                : const [],
           );
 
       ref.invalidate(userSearchProvider);
@@ -151,7 +153,8 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                           labelText: 'Full name',
                           prefixIcon: Icon(Icons.person_outline),
                         ),
-                        validator: (value) => (value == null || value.trim().isEmpty)
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
                             ? 'Required'
                             : null,
                       ),
@@ -165,7 +168,9 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                         ],
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: InputDecoration(
-                          labelText: _role == 'student' ? 'Student ID' : 'Staff ID',
+                          labelText: _role == 'student'
+                              ? 'Student ID'
+                              : 'Staff ID',
                           prefixIcon: const Icon(Icons.badge_outlined),
                           helperText: _role == 'student'
                               ? 'Year enrolled + index, e.g. $_campusIdExample'

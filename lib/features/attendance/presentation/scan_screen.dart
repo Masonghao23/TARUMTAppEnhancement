@@ -22,6 +22,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
   bool _busy = false;
+  // Gates _onDetect — a scan captured before this is true still has to sit
+  // and wait for _positionFuture/_identityFuture inside _onDetect, and that
+  // wait (up to a 20-40s cold GPS fix) can by itself burn through the QR's
+  // tolerance window before the check-in ever reaches the server. Blocking
+  // detection until both are already settled moves that wait to before the
+  // token is captured instead of after.
+  bool _ready = false;
   late final Future<Position> _positionFuture;
   late final Future<DeviceIdentity> _identityFuture;
 
@@ -32,7 +39,29 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     // cold GPS fix can take 20-40s, and starting it only after the scan
     // eats into the QR's short validity window for no reason.
     _positionFuture = ref.read(locationServiceProvider).getCurrentPosition();
-    _identityFuture = ref.read(deviceIdentityServiceProvider).getDeviceIdentity();
+    _identityFuture = ref
+        .read(deviceIdentityServiceProvider)
+        .getDeviceIdentity();
+    _awaitReady();
+  }
+
+  /// Waits out both futures regardless of outcome — a failure here (e.g.
+  /// location permission denied) still has to unblock scanning, since
+  /// _onDetect already has proper error handling for that; the point of
+  /// this gate is purely to avoid *waiting* after the scan, not to prevent
+  /// scanning when GPS is unavailable.
+  Future<void> _awaitReady() async {
+    try {
+      await _positionFuture;
+    } catch (_) {
+      // Surfaced later by _onDetect when it actually awaits _positionFuture.
+    }
+    try {
+      await _identityFuture;
+    } catch (_) {
+      // Surfaced later by _onDetect when it actually awaits _identityFuture.
+    }
+    if (mounted) setState(() => _ready = true);
   }
 
   @override
@@ -42,7 +71,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_busy) return;
+    if (_busy || !_ready) return;
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null) return;
     final parsed = ScannedSessionToken.tryParse(raw);
@@ -64,6 +93,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             latitude: position.latitude,
             longitude: position.longitude,
           );
+      if (result.success) {
+        final userId = ref.read(currentUserIdProvider);
+        if (userId != null) {
+          ref.invalidate(attendanceHistoryProvider(userId));
+          ref.invalidate(overallAttendanceHoursProvider(userId));
+        }
+      }
       if (mounted) await _showResult(result: result);
     } on LocationUnavailableException catch (e) {
       if (mounted) {
@@ -92,7 +128,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       enableDrag: false,
       backgroundColor: scheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) => _ResultSheet(result: result),
     );
@@ -119,6 +157,48 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               shape: _ScannerOverlayShape(borderRadius: 24, cutOutSize: 260),
             ),
           ),
+          if (!_busy && _ready)
+            const Align(
+              alignment: Alignment(0, 0.62),
+              child: Text(
+                'Point the camera at the lecturer\'s QR code',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ),
+          if (!_busy && !_ready)
+            const Align(
+              alignment: Alignment(0, 0.62),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Getting your location…',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          if (_busy)
+            const IgnorePointer(
+              child: ColoredBox(
+                color: Colors.black54,
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
+          // Always on top and hit-testable, even while busy — previously the
+          // busy overlay above painted over this row and silently ate taps,
+          // leaving no way to back out of a stuck check-in.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -127,30 +207,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    tooltip: _busy ? 'Cancel' : 'Close',
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: () => _controller.toggleTorch(),
-                    icon: const Icon(Icons.flash_on_rounded, color: Colors.white),
-                  ),
+                  if (!_busy)
+                    IconButton(
+                      onPressed: () => _controller.toggleTorch(),
+                      icon: const Icon(
+                        Icons.flash_on_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-          const Align(
-            alignment: Alignment(0, 0.62),
-            child: Text(
-              'Point the camera at the lecturer\'s QR code',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-          ),
-          if (_busy)
-            const ColoredBox(
-              color: Colors.black54,
-              child: Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-            ),
         ],
       ),
     );
@@ -171,7 +242,9 @@ class _ResultSheet extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final success = result.success;
     final color = success ? scheme.tertiary : scheme.error;
-    final containerColor = success ? scheme.tertiaryContainer : scheme.errorContainer;
+    final containerColor = success
+        ? scheme.tertiaryContainer
+        : scheme.errorContainer;
 
     return SafeArea(
       child: Padding(
@@ -230,7 +303,10 @@ class _ResultSheet extends StatelessWidget {
 }
 
 class _ScannerOverlayShape extends ShapeBorder {
-  const _ScannerOverlayShape({required this.borderRadius, required this.cutOutSize});
+  const _ScannerOverlayShape({
+    required this.borderRadius,
+    required this.cutOutSize,
+  });
 
   final double borderRadius;
   final double cutOutSize;
@@ -242,8 +318,8 @@ class _ScannerOverlayShape extends ShapeBorder {
   Path getInnerPath(Rect rect, {TextDirection? textDirection}) => Path();
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => Path()
-    ..addRect(rect);
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {

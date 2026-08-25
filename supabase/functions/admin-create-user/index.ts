@@ -3,7 +3,19 @@
 // leaves this server-side function.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req) => {
+  // Browsers send a CORS preflight OPTIONS request before the real POST
+  // whenever a custom header (Authorization) is involved. Without this, the
+  // browser blocks the actual request before it ever reaches the code below.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
@@ -42,6 +54,7 @@ Deno.serve(async (req) => {
     name?: string;
     campusId?: string;
     role?: string;
+    courseIds?: string[];
   };
   try {
     body = await req.json();
@@ -49,7 +62,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Invalid JSON body" }, 400);
   }
 
-  const { email, password, name, campusId, role } = body;
+  const { email, password, name, campusId, role, courseIds } = body;
   if (
     !email ||
     !password ||
@@ -58,6 +71,12 @@ Deno.serve(async (req) => {
     (role !== "student" && role !== "staff")
   ) {
     return jsonResponse({ error: "Invalid request body" }, 400);
+  }
+  if (
+    courseIds !== undefined &&
+    (!Array.isArray(courseIds) || courseIds.some((id) => typeof id !== "string"))
+  ) {
+    return jsonResponse({ error: "courseIds must be an array of strings" }, 400);
   }
   if (password.length < 8) {
     return jsonResponse({ error: "Password must be at least 8 characters" }, 400);
@@ -87,12 +106,32 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: createError.message }, 400);
   }
 
-  return jsonResponse({ userId: created.user?.id }, 200);
+  const userId = created.user?.id;
+
+  // Enrollment is only meaningful for students, and course_enrollments has
+  // no INSERT grant for `authenticated` (see attendance_schema.sql) — the
+  // service-role client bypasses RLS to write it here. A failure at this
+  // step doesn't roll back the just-created account; it's surfaced as a
+  // warning alongside the userId instead.
+  if (role === "student" && courseIds && courseIds.length > 0 && userId) {
+    const { error: enrollError } = await adminClient
+      .from("course_enrollments")
+      .insert(courseIds.map((courseId) => ({ student_id: userId, course_id: courseId })));
+
+    if (enrollError) {
+      return jsonResponse(
+        { userId, enrollmentWarning: enrollError.message },
+        200,
+      );
+    }
+  }
+
+  return jsonResponse({ userId }, 200);
 });
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }

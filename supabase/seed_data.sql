@@ -69,6 +69,30 @@ begin
     values (v_block_c, 'C-102', 'computer_lab', 'available', v_test_lat, v_test_long, v_test_radius);
   end if;
 
+  -- Arena building/facility ---------------------------------------------------
+  -- Real coordinates (unlike the placeholder blocks above) — "TARUMT ARENA /
+  -- Student Centre", verified via OpenStreetMap: 3.2160788, 101.7288917.
+  -- radius_meters is a little more generous than the schema default (50m) to
+  -- absorb typical outdoor GPS accuracy against the building's footprint;
+  -- tighten it once you've tested check-in from the actual room.
+  declare
+    v_arena uuid;
+    v_arena_lat double precision := 3.2160788;
+    v_arena_long double precision := 101.7288917;
+    v_arena_radius integer := 100;
+  begin
+    select id into v_arena from public.buildings where building_name = 'Arena';
+    if v_arena is null then
+      insert into public.buildings (building_name)
+      values ('Arena') returning id into v_arena;
+    end if;
+
+    if not exists (select 1 from public.facilities where room_name = 'Arena Tutorial Room') then
+      insert into public.facilities (building_id, room_name, type, status, latitude, longitude, radius_meters)
+      values (v_arena, 'Arena Tutorial Room', 'tutorial_room', 'available', v_arena_lat, v_arena_long, v_arena_radius);
+    end if;
+  end;
+
   -- Courses -------------------------------------------------------------------
   insert into public.courses (course_code, course_name) values
     ('BACS2013', 'Database Systems'),

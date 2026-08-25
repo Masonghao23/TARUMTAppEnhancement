@@ -6,10 +6,7 @@ import 'package:crypto/crypto.dart';
 /// `submit_attendance` function, which recomputes the same value to verify
 /// a scanned token. Computed purely locally so the lecturer's QR can
 /// refresh every [intervalSeconds] with no network round trip.
-String computeQrToken({
-  required String seed,
-  required int windowIndex,
-}) {
+String computeQrToken({required String seed, required int windowIndex}) {
   final hmac = Hmac(sha256, utf8.encode(seed));
   return hmac.convert(utf8.encode(windowIndex.toString())).toString();
 }

@@ -13,8 +13,7 @@ class StaffUserSearchScreen extends ConsumerStatefulWidget {
       _StaffUserSearchScreenState();
 }
 
-class _StaffUserSearchScreenState
-    extends ConsumerState<StaffUserSearchScreen> {
+class _StaffUserSearchScreenState extends ConsumerState<StaffUserSearchScreen> {
   final _searchController = TextEditingController();
   String _keyword = '';
 
@@ -64,8 +63,7 @@ class _StaffUserSearchScreenState
           Expanded(
             child: resultsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  Center(child: Text('Search failed: $error')),
+              error: (error, _) => Center(child: Text('Search failed: $error')),
               data: (results) {
                 if (results.isEmpty) {
                   return Center(
@@ -143,9 +141,9 @@ class _UserResultTile extends StatelessWidget {
               children: [
                 Text(
                   profile.name.isEmpty ? '(No name set)' : profile.name,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(

@@ -16,10 +16,7 @@ class AttendanceRepository {
       'status, start_time, end_time';
 
   Future<List<Course>> fetchCourses() async {
-    final rows = await _client
-        .from('courses')
-        .select()
-        .order('course_code');
+    final rows = await _client.from('courses').select().order('course_code');
     return rows.map(Course.fromMap).toList();
   }
 
@@ -31,21 +28,127 @@ class AttendanceRepository {
     return rows.map(Facility.fromMap).toList();
   }
 
-  Future<ClassSession> createSession({
+  /// This week's/today's real timetable slots this lecturer can start a
+  /// session for — "starting a session" means starting one of these, never
+  /// a freehand course+room pick (see start_scheduled_session below).
+  Future<List<LecturerSlot>> fetchLecturerScheduleForDate({
     required String lecturerId,
-    required String courseId,
-    required String roomId,
+    required DateTime date,
   }) async {
-    final row = await _client
-        .from('class_sessions')
-        .insert({
-          'lecturer_id': lecturerId,
-          'course_id': courseId,
-          'room_id': roomId,
-        })
-        .select(_sessionColumns)
-        .single();
-    return ClassSession.fromMap(row);
+    final rows = await _client.rpc(
+      'get_lecturer_schedule_for_date',
+      params: {'p_lecturer_id': lecturerId, 'p_date': _dateOnly(date)},
+    );
+    return (rows as List)
+        .map((row) => LecturerSlot.fromMap(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Idempotent — calling this again for a slot that's already been
+  /// started returns that same session (alreadyStarted: true) rather than
+  /// creating a duplicate or erroring.
+  Future<StartSessionResult> startScheduledSession({
+    String? scheduleId,
+    String? exceptionId,
+    required DateTime occurrenceDate,
+  }) async {
+    final response = await _client.rpc(
+      'start_scheduled_session',
+      params: {
+        'p_schedule_id': scheduleId,
+        'p_exception_id': exceptionId,
+        'p_occurrence_date': _dateOnly(occurrenceDate),
+      },
+    );
+    return StartSessionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  static String _dateOnly(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  static String _timeOnly(WallClockTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:'
+      '${t.minute.toString().padLeft(2, '0')}';
+
+  /// [id] null creates a new recurring slot; non-null edits that slot.
+  Future<ScheduleActionResult> upsertClassSchedule({
+    String? id,
+    required String courseId,
+    required SessionSlotType sessionType,
+    required String roomId,
+    required int dayOfWeek,
+    required WallClockTime startTime,
+    required WallClockTime endTime,
+  }) async {
+    final response = await _client.rpc(
+      'upsert_class_schedule',
+      params: {
+        'p_id': id,
+        'p_course_id': courseId,
+        'p_session_type': sessionType.name,
+        'p_room_id': roomId,
+        'p_day_of_week': dayOfWeek,
+        'p_start_time': _timeOnly(startTime),
+        'p_end_time': _timeOnly(endTime),
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// [exceptionType] is 'move', 'cancel', or 'add' — see
+  /// timetable_stage3_schema.sql for which fields each one needs.
+  Future<ScheduleActionResult> createScheduleException({
+    required String exceptionType,
+    String? scheduleId,
+    DateTime? originalDate,
+    String? courseId,
+    SessionSlotType? sessionType,
+    String? roomId,
+    DateTime? occurrenceDate,
+    WallClockTime? startTime,
+    WallClockTime? endTime,
+  }) async {
+    final response = await _client.rpc(
+      'create_schedule_exception',
+      params: {
+        'p_exception_type': exceptionType,
+        'p_schedule_id': scheduleId,
+        'p_original_date': originalDate == null
+            ? null
+            : _dateOnly(originalDate),
+        'p_course_id': courseId,
+        'p_session_type': sessionType?.name,
+        'p_room_id': roomId,
+        'p_occurrence_date': occurrenceDate == null
+            ? null
+            : _dateOnly(occurrenceDate),
+        'p_start_time': startTime == null ? null : _timeOnly(startTime),
+        'p_end_time': endTime == null ? null : _timeOnly(endTime),
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// Reverts a move/cancel back to the normal recurring occurrence, or
+  /// removes a standalone 'add' — the "Undo" action.
+  Future<ScheduleActionResult> removeScheduleException(
+    String exceptionId,
+  ) async {
+    final response = await _client.rpc(
+      'remove_schedule_exception',
+      params: {'p_exception_id': exceptionId},
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
   }
 
   /// The QR seed is only ever readable through this RPC (see
@@ -81,13 +184,111 @@ class AttendanceRepository {
     return rows.map(ClassSession.fromMap).toList();
   }
 
+  /// Only this lecturer's currently-active sessions — powers the "Live now"
+  /// list on the main Attendance tab. Unbounded on purpose: unlike the full
+  /// history, there will only ever be a small handful of sessions truly
+  /// active at once, so a 50-row cap shared with history isn't the right
+  /// fit here — a session could in principle be excluded by 50+ more
+  /// recent *ended* sessions even though it's still live.
+  Future<List<ClassSession>> fetchActiveSessions(String lecturerId) async {
+    final rows = await _client
+        .from('class_sessions')
+        .select(
+          '$_sessionColumns, courses(course_name, course_code), facilities(room_name)',
+        )
+        .eq('lecturer_id', lecturerId)
+        .eq('status', 'active')
+        .order('start_time', ascending: false);
+    return rows.map(ClassSession.fromMap).toList();
+  }
+
+  /// One page of this lecturer's ended sessions, filtered server-side by
+  /// course/date — unlike [fetchMySessions], this doesn't filter a capped
+  /// client-side snapshot (which can only ever "see" the 50 most recent
+  /// sessions overall, silently hiding older ones from any filter no
+  /// matter how narrow). Call again with an increasing [offset] — equal to
+  /// how many rows have been loaded so far — for "load more"; [limit] rows
+  /// returned means there may be another page.
+  Future<List<ClassSession>> fetchSessionHistoryPage({
+    required String lecturerId,
+    String? courseId,
+    DateTime? date,
+    required int offset,
+    int limit = 20,
+  }) async {
+    var query = _client
+        .from('class_sessions')
+        .select(
+          '$_sessionColumns, courses(course_name, course_code), facilities(room_name)',
+        )
+        .eq('lecturer_id', lecturerId)
+        .eq('status', 'ended');
+    if (courseId != null) {
+      query = query.eq('course_id', courseId);
+    }
+    if (date != null) {
+      final dayStart = DateTime(date.year, date.month, date.day);
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      query = query
+          .gte('start_time', dayStart.toUtc().toIso8601String())
+          .lt('start_time', dayEnd.toUtc().toIso8601String());
+    }
+    final rows = await query
+        .order('start_time', ascending: false)
+        .range(offset, offset + limit - 1);
+    return rows.map(ClassSession.fromMap).toList();
+  }
+
+  /// The live "Checked in" list — real scans only. The realtime stream API
+  /// only supports the one equality filter, so 'absent'/'leave' rows (which
+  /// only exist from a lecturer's manual override, see [setAttendanceStatus])
+  /// are filtered out client-side rather than in the query itself.
   Stream<List<AttendanceRecord>> watchRoster(String sessionId) {
     return _client
         .from('attendance_records')
         .stream(primaryKey: ['id'])
         .eq('session_id', sessionId)
         .order('scan_timestamp')
-        .map((rows) => rows.map(AttendanceRecord.fromMap).toList());
+        .map(
+          (rows) => rows
+              .map(AttendanceRecord.fromMap)
+              .where((r) => r.status == 'present' || r.status == 'late')
+              .toList(),
+        );
+  }
+
+  /// Every student enrolled in this session's course with their current
+  /// attendance status — includes students who never scanned (shown as
+  /// 'absent'/'pending', not stored as a real row until overridden). Powers
+  /// the lecturer's "Manage attendance" screen.
+  Future<List<RosterEntry>> fetchSessionRoster(String sessionId) async {
+    final rows = await _client.rpc(
+      'get_session_roster',
+      params: {'p_session_id': sessionId},
+    );
+    return (rows as List)
+        .map((row) => RosterEntry.fromMap(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Lecturer override of one student's status for a session — works for a
+  /// live session or one that's already ended.
+  Future<ScheduleActionResult> setAttendanceStatus({
+    required String sessionId,
+    required String studentId,
+    required AttendanceStatus status,
+  }) async {
+    final response = await _client.rpc(
+      'set_attendance_status',
+      params: {
+        'p_session_id': sessionId,
+        'p_student_id': studentId,
+        'p_status': status.wireValue,
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
   }
 
   Future<AttendanceResult> submitAttendance({
@@ -134,14 +335,93 @@ class AttendanceRepository {
     return rows.map(AttendanceHistoryEntry.fromMap).toList();
   }
 
-  Future<double> fetchAttendancePercentage({
+  Future<List<Course>> fetchMyEnrolledCourses(String studentId) async {
+    final rows = await _client
+        .from('course_enrollments')
+        .select('courses(id, course_code, course_name)')
+        .eq('student_id', studentId);
+    return rows
+        .map((row) => row['courses'] as Map<String, dynamic>?)
+        .whereType<Map<String, dynamic>>()
+        .map(Course.fromMap)
+        .toList();
+  }
+
+  Future<List<TimetableOccurrence>> fetchMyTimetableWeek({
+    required String studentId,
+    required DateTime weekStart,
+  }) async {
+    final weekStartDate =
+        '${weekStart.year.toString().padLeft(4, '0')}-'
+        '${weekStart.month.toString().padLeft(2, '0')}-'
+        '${weekStart.day.toString().padLeft(2, '0')}';
+    final rows = await _client.rpc(
+      'get_my_timetable_week',
+      params: {'p_student_id': studentId, 'p_week_start': weekStartDate},
+    );
+    return (rows as List)
+        .map((row) => TimetableOccurrence.fromMap(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// A lecturer's own occurrences across an arbitrary date range (a
+  /// calendar month, for the Manage Timetable flow), optionally narrowed
+  /// to a set of courses. Null/empty [courseIds] means "every course".
+  Future<List<TimetableOccurrence>> fetchLecturerOccurrences({
+    required String lecturerId,
+    required List<String> courseIds,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final rows = await _client.rpc(
+      'get_lecturer_occurrences',
+      params: {
+        'p_lecturer_id': lecturerId,
+        'p_course_ids': courseIds.isEmpty ? null : courseIds,
+        'p_from': _dateOnly(from),
+        'p_to': _dateOnly(to),
+      },
+    );
+    return (rows as List)
+        .map((row) => TimetableOccurrence.fromMap(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Every class_schedule row currently shares one effective_from/
+  /// term_weeks (one shared university-wide term, not per-course), so the
+  /// first row is representative — falls back to "this Monday, 12 weeks"
+  /// if the timetable hasn't been seeded yet.
+  Future<TermInfo> fetchTermInfo() async {
+    final rows = await _client
+        .from('class_schedule')
+        .select('effective_from, term_weeks')
+        .limit(1);
+    if (rows.isEmpty) {
+      final today = DateTime.now();
+      final monday = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(Duration(days: today.weekday - 1));
+      return TermInfo(effectiveFrom: monday, termWeeks: 12);
+    }
+    final row = rows.first;
+    return TermInfo(
+      effectiveFrom: DateTime.parse(row['effective_from'] as String),
+      termWeeks: row['term_weeks'] as int,
+    );
+  }
+
+  Future<CourseAttendanceHours> fetchCourseAttendanceHours({
     required String studentId,
     required String courseId,
   }) async {
-    final response = await _client.rpc(
-      'calculate_attendance_percentage',
+    final rows = await _client.rpc(
+      'calculate_course_attendance_hours',
       params: {'p_student_id': studentId, 'p_course_id': courseId},
     );
-    return (response as num).toDouble();
+    return CourseAttendanceHours.fromMap(
+      (rows as List).first as Map<String, dynamic>,
+    );
   }
 }

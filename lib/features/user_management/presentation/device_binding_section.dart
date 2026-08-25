@@ -155,9 +155,7 @@ class _DeviceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            const Expanded(
-              child: Text('No device bound to this account yet.'),
-            ),
+            const Expanded(child: Text('No device bound to this account yet.')),
           ],
         ),
       );
@@ -186,10 +184,7 @@ class _DeviceCard extends StatelessWidget {
                   color: scheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
-                child: Icon(
-                  Icons.smartphone_outlined,
-                  color: scheme.primary,
-                ),
+                child: Icon(Icons.smartphone_outlined, color: scheme.primary),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -221,7 +216,9 @@ class _DeviceCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  active ? Icons.check_circle_outline : Icons.lock_clock_outlined,
+                  active
+                      ? Icons.check_circle_outline
+                      : Icons.lock_clock_outlined,
                   size: 16,
                   color: statusColor,
                 ),

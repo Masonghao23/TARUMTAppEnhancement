@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_logo.dart';
+import '../../parking/presentation/vehicle_management_section.dart';
 import '../data/models.dart';
 import '../providers.dart';
 import 'device_binding_section.dart';
@@ -52,78 +54,9 @@ class _ProfileBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                scheme.primary.withValues(alpha: 0.14),
-                scheme.surfaceContainerHigh,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: scheme.primary, width: 2.5),
-                ),
-                child: CircleAvatar(
-                  radius: 42,
-                  backgroundColor: scheme.primaryContainer,
-                  child: Text(
-                    profile.name.isNotEmpty
-                        ? profile.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                profile.name.isEmpty ? '(No name set)' : profile.name,
-                style: textTheme.titleLarge,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(profile.email, style: textTheme.bodyMedium),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: roleColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                ),
-                child: Text(
-                  profile.role.name.toUpperCase(),
-                  style: TextStyle(
-                    color: roleColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _IdCard(profile: profile, roleColor: roleColor),
         const SizedBox(height: 20),
-        Text(
-          'Account details',
-          style: textTheme.titleMedium,
-        ),
+        Text('Account details', style: textTheme.titleMedium),
         const SizedBox(height: 10),
         Card(
           child: Padding(
@@ -163,9 +96,176 @@ class _ProfileBody extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         const DeviceBindingSection(),
+        const SizedBox(height: 20),
+        Text('Vehicles', style: textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(
+          'Register a vehicle plate to reserve parking slots.',
+          style: textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 10),
+        const VehicleManagementSection(),
       ],
     );
   }
+}
+
+/// The profile header styled like a physical campus ID card — accent edge,
+/// small crest mark, role chip, and a decorative barcode strip. Purely
+/// visual: the barcode encodes nothing and isn't scannable.
+class _IdCard extends StatelessWidget {
+  const _IdCard({required this.profile, required this.roleColor});
+
+  final Profile profile;
+  final Color roleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              scheme.surfaceContainerHigh,
+              scheme.primary.withValues(alpha: 0.10),
+            ],
+          ),
+          border: Border(left: BorderSide(color: scheme.primary, width: 6)),
+        ),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const AppLogo(height: 18),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: roleColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                  ),
+                  child: Text(
+                    profile.role.name.toUpperCase(),
+                    style: TextStyle(
+                      color: roleColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: scheme.primary,
+                  child: Text(
+                    profile.name.isNotEmpty
+                        ? profile.name[0].toUpperCase()
+                        : '?',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name.isEmpty ? '(No name set)' : profile.name,
+                        style: textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID ${profile.campusId}',
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 22,
+              child: CustomPaint(painter: _BarcodePainter(scheme.onSurface)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BarcodePainter extends CustomPainter {
+  _BarcodePainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.5);
+    // A fixed, arbitrary pattern of bar widths/heights — decorative only.
+    const weights = [
+      1.0,
+      0.5,
+      0.8,
+      0.3,
+      1.0,
+      0.6,
+      0.4,
+      1.0,
+      0.3,
+      0.7,
+      0.5,
+      1.0,
+      0.4,
+      0.8,
+      0.3,
+      1.0,
+      0.6,
+      0.9,
+      0.3,
+      1.0,
+      0.5,
+      0.7,
+      0.4,
+      1.0,
+      0.3,
+      0.8,
+    ];
+    final barWidth = size.width / (weights.length * 1.6);
+    var x = 0.0;
+    for (final w in weights) {
+      final h = size.height * w;
+      canvas.drawRect(Rect.fromLTWH(x, size.height - h, barWidth, h), paint);
+      x += barWidth * 1.6;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BarcodePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _InfoRow extends StatelessWidget {
