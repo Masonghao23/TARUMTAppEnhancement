@@ -16,7 +16,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSubmitting = false;
@@ -24,7 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -41,7 +41,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authRepositoryProvider)
           .signInWithPassword(
-            email: _emailController.text.trim(),
+            identifier: _identifierController.text.trim(),
             password: _passwordController.text,
           );
       // On success, the auth state stream flips and app.dart's AuthGate
@@ -106,16 +106,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 32),
                         TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
+                          controller: _identifierController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.mail_outline),
+                            labelText: 'ID or Email',
+                            prefixIcon: Icon(Icons.person_outline),
                           ),
                           validator: (value) {
-                            if (value == null || !value.contains('@')) {
-                              return 'Enter a valid email address';
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter your campus ID or email';
                             }
                             return null;
                           },
