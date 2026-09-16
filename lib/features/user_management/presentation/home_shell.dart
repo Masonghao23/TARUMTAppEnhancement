@@ -9,6 +9,9 @@ import '../../attendance/presentation/staff_sessions_screen.dart';
 import '../../attendance/presentation/student_attendance_screen.dart';
 import '../../auth/providers.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../home/providers.dart' as home_providers;
+import '../../notifications/presentation/notifications_screen.dart';
+import '../../notifications/providers.dart';
 import '../../parking/presentation/parking_dashboard_screen.dart';
 import '../data/models.dart';
 import '../providers.dart';
@@ -24,8 +27,6 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 1;
-
   static const _titles = [
     'Attendance',
     'Parking',
@@ -36,8 +37,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Fire-and-forget: registers this device's FCM token once per
+    // signed-in user. No loading/error UI needed for a background setup
+    // step — a failed permission grant or token fetch just means no push
+    // for this device, not a broken screen.
+    ref.watch(pushNotificationSetupProvider);
+
     final scheme = Theme.of(context).colorScheme;
     final profileAsync = ref.watch(currentProfileProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
     final isAdmin = profileAsync.value?.role == UserRole.admin;
     final isStaff = profileAsync.value?.role == UserRole.staff || isAdmin;
     const attendanceIndex = 0;
@@ -80,7 +88,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (isStaff) const StaffUserSearchScreen(),
     ];
 
-    final safeIndex = _index >= pages.length ? 0 : _index;
+    final index = ref.watch(home_providers.homeShellTabIndexProvider);
+    final safeIndex = index >= pages.length ? 0 : index;
 
     return Scaffold(
       appBar: AppBar(
@@ -89,10 +98,64 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           children: [
             const AppLogo(height: 26),
             const SizedBox(width: 14),
-            Text(_titles[safeIndex]),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(_titles[safeIndex], maxLines: 1),
+              ),
+            ),
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  tooltip: 'Notifications',
+                  style: IconButton.styleFrom(
+                    backgroundColor: scheme.surfaceContainerHigh,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                  ),
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
+                  ),
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.error,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusPill,
+                        ),
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: TextStyle(
+                          color: scheme.onError,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
@@ -112,7 +175,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: IndexedStack(index: safeIndex, children: pages),
       bottomNavigationBar: FloatingNavBar(
         selectedIndex: safeIndex,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        onDestinationSelected: (value) =>
+            ref.read(home_providers.homeShellTabIndexProvider.notifier).state =
+                value,
         items: destinations,
       ),
       floatingActionButton: _buildFab(

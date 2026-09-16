@@ -22,6 +22,16 @@ dependencies:
   qr_flutter: ^4.1.0
   geolocator: ^14.0.2
   crypto: ^3.0.7
+  nfc_manager: ^4.2.1
+  # Pinned to the 6.2 beta line: stable 6.1.x's Android platform package
+  # (flutter_inappwebview_android 1.1.3) calls a Gradle Proguard API that
+  # this project's Android Gradle Plugin/R8 version has removed support
+  # for, and 6.1.x hasn't been updated in ~2 years — this beta is what
+  # actually builds against a current Android toolchain.
+  flutter_inappwebview: 6.2.0-beta.3
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:
@@ -29,8 +39,28 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/web/
+
+# Generates the phone home-screen / app-drawer icon from the TARUMT crest
+# (cropped out of assets/images/tarumt_logo.png, padded onto a white square)
+# — run `dart run flutter_launcher_icons` after editing this. android_12
+# below is Android's newer themed/monochrome adaptive icon format; the
+# adaptive_icon_* keys above it cover Android 8–11 and iOS/macOS still use
+# the flat image_path.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
+  android_12:
+    image_path: "assets/images/app_icon.png"
+    icon_background_color: "#FFFFFF"
+    adaptive_icon_foreground: "assets/images/app_icon_foreground.png"

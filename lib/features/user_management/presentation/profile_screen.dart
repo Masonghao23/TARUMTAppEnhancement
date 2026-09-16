@@ -74,14 +74,6 @@ class _ProfileBody extends StatelessWidget {
                   label: 'Email',
                   value: profile.email,
                 ),
-                if (profile.rfidUid != null) ...[
-                  const Divider(indent: 56, height: 1),
-                  _InfoRow(
-                    icon: Icons.nfc,
-                    label: 'RFID UID',
-                    value: profile.rfidUid!,
-                  ),
-                ],
               ],
             ),
           ),

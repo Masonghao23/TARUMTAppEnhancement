@@ -327,6 +327,14 @@ begin
     return jsonb_build_object('success', false, 'reason', 'This session has already ended.');
   end if;
 
+  -- status alone isn't enough: an overstayed reservation (past end_time,
+  -- never manually Finished) deliberately stays 'reserved' so the student
+  -- can still see and Finish it -- but that also let it be Extended days
+  -- after the fact, with no time-based check to catch it.
+  if now() >= v_reservation.end_time then
+    return jsonb_build_object('success', false, 'reason', 'This session has already ended.');
+  end if;
+
   v_new_end := v_reservation.end_time + make_interval(secs => p_additional_seconds);
 
   -- Same 6:00 AM-12:00 AM operating window as booking — an extension can

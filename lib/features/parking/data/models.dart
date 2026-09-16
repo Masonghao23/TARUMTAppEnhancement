@@ -116,8 +116,15 @@ class ParkingReservation {
     // Bookings are always for a future day, so a reservation is only
     // "active" once that day has actually arrived — not merely because it
     // hasn't ended yet (a reservation starting tomorrow would otherwise
-    // read as active today).
-    return !now.isBefore(startTime) && now.isBefore(endTime);
+    // read as active today). Deliberately NOT also requiring
+    // now.isBefore(endTime): a reservation that's run past its scheduled
+    // end without ever being Finished (an overstay) must still show up
+    // here rather than disappearing into a gap between this and
+    // [isUpcoming] — that's exactly the state ActiveSessionScreen already
+    // handles gracefully ("Time's up" + a working Finish button), and the
+    // one place the student can actually clear it to free up their
+    // one-reservation cap slot.
+    return !now.isBefore(startTime);
   }
 
   /// A reservation that hasn't started yet — still extendable/cancellable,

@@ -5,9 +5,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../user_management/providers.dart';
 import '../data/models.dart';
 import '../providers.dart';
+import 'attendance_charts_screen.dart';
 import 'live_session_screen.dart';
 import 'manage_timetable_screen.dart';
+import 'reschedule_requests_screen.dart';
 import 'session_history_screen.dart';
+import 'timetable_screen.dart';
 
 class StaffSessionsScreen extends ConsumerWidget {
   const StaffSessionsScreen({super.key});
@@ -19,6 +22,9 @@ class StaffSessionsScreen extends ConsumerWidget {
     if (lecturerId == null) return const SizedBox.shrink();
 
     final sessionsAsync = ref.watch(activeSessionsProvider(lecturerId));
+    final pendingRequestCount = ref.watch(
+      pendingRescheduleRequestCountProvider,
+    );
 
     return Column(
       children: [
@@ -26,6 +32,16 @@ class StaffSessionsScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Column(
             children: [
+              _NavLinkRow(
+                icon: Icons.calendar_month_outlined,
+                label: 'My Timetable',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TimetableScreen(forLecturer: true),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               _NavLinkRow(
                 icon: Icons.edit_calendar_outlined,
                 label: 'Manage Timetable',
@@ -42,6 +58,27 @@ class StaffSessionsScreen extends ConsumerWidget {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const SessionHistoryScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _NavLinkRow(
+                icon: Icons.event_repeat_outlined,
+                label: 'Reschedule Requests',
+                badgeCount: pendingRequestCount,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RescheduleRequestsScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _NavLinkRow(
+                icon: Icons.insights_outlined,
+                label: 'Attendance Charts',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AttendanceChartsScreen(),
                   ),
                 ),
               ),
@@ -113,11 +150,13 @@ class _NavLinkRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +179,27 @@ class _NavLinkRow extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              if (badgeCount > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.error,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                  ),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: TextStyle(
+                      color: scheme.onError,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Icon(
                 Icons.chevron_right_rounded,
                 color: scheme.onSurfaceVariant,

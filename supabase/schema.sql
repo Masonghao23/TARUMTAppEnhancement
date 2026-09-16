@@ -109,7 +109,16 @@ grant execute on function public.release_device_from_other_users(text, uuid) to 
 
 -- RLS policies only filter *rows*; the authenticated role still needs the
 -- base table grant or every query 42501s regardless of policy outcome.
-grant select, insert, update on public.profiles to authenticated;
+--
+-- profiles gets SELECT only. RLS has no column-level enforcement, so any
+-- UPDATE grant here — even paired with a row-scoped "you may edit your own
+-- row" policy — lets a signed-in user PATCH their own row's `role` to
+-- 'admin' straight through PostgREST, bypassing the app entirely (verified
+-- exploitable). New rows come from the handle_new_user trigger (security
+-- definer, unaffected by this grant); the client only ever reads profiles.
+-- If a profile-edit screen is ever built, add a security-definer RPC that
+-- whitelists editable columns (name, rfid_uid) — never a raw UPDATE grant.
+grant select on public.profiles to authenticated;
 grant select, insert, update on public.user_devices to authenticated;
 
 alter table public.profiles enable row level security;
@@ -139,9 +148,10 @@ drop policy if exists "profiles_select_staff" on public.profiles;
 create policy "profiles_select_staff" on public.profiles
   for select using (public.current_user_role() in ('staff', 'admin'));
 
+-- No UPDATE policy on profiles on purpose — see the grant note above.
+-- Dropped rather than left in place so a future re-added UPDATE grant
+-- defaults to RLS-denied instead of silently reopening the hole.
 drop policy if exists "profiles_update_self" on public.profiles;
-create policy "profiles_update_self" on public.profiles
-  for update using (auth.uid() = id);
 
 drop policy if exists "user_devices_select_own" on public.user_devices;
 create policy "user_devices_select_own" on public.user_devices

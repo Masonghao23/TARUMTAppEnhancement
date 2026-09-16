@@ -4,19 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../attendance/presentation/course_attendance_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
-import '../../attendance/presentation/staff_sessions_screen.dart';
 import '../../attendance/presentation/start_session_screen.dart';
 import '../../attendance/providers.dart';
+import '../../booking/booking_screen.dart';
+import '../../booking/my_bookings_screen.dart';
+import '../../booking/nfc_checkin_screen.dart';
+import '../../campus_map/global_map_screen.dart';
+import '../../notifications/presentation/broadcast_announcement_screen.dart';
 import '../../parking/data/models.dart';
 import '../../parking/presentation/active_session_screen.dart';
 import '../../parking/presentation/book_slot_screen.dart';
-import '../../parking/presentation/parking_dashboard_screen.dart';
 import '../../parking/presentation/upcoming_reservation_screen.dart';
 import '../../parking/providers.dart';
 import '../../user_management/data/models.dart';
-import '../../user_management/presentation/profile_screen.dart';
-import '../../user_management/presentation/staff_user_search_screen.dart';
 import '../../user_management/providers.dart';
+import '../providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -158,11 +160,8 @@ class _StudentBento extends ConsumerWidget {
                   error: (_, _) => '—',
                 ),
                 subtitle: 'Parking free',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ParkingDashboardScreen(),
-                  ),
-                ),
+                onTap: () =>
+                    ref.read(homeShellTabIndexProvider.notifier).state = 1,
               ),
             ),
           ],
@@ -222,6 +221,65 @@ class _StudentBento extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _BentoTile(
+                icon: Icons.map_outlined,
+                iconColor: Colors.teal,
+                title: '3D Campus Map',
+                subtitle: 'Navigate the campus',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GlobalMapScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _BentoTile(
+                icon: Icons.meeting_room_rounded,
+                title: 'Book a room',
+                subtitle: 'Discussion rooms',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BookingScreen()),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _BentoTile(
+          icon: Icons.event_note_rounded,
+          title: 'My bookings',
+          subtitle: 'Check your booking status',
+          horizontal: true,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Same red "Check-In Demo" button as tarumt_app's HomePage — kept
+        // visually distinct on purpose (redAccent, not a bento tile), since
+        // that's the original's own styling for this entry point.
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NfcCheckinScreen()),
+            ),
+            icon: const Icon(Icons.play_circle_fill, color: Colors.white),
+            label: const Text(
+              'Check-In Demo',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -254,11 +312,8 @@ class _StaffBento extends ConsumerWidget {
                   error: (_, _) => '—',
                 ),
                 subtitle: 'Sessions run',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const StaffSessionsScreen(),
-                  ),
-                ),
+                onTap: () =>
+                    ref.read(homeShellTabIndexProvider.notifier).state = 0,
               ),
             ),
             const SizedBox(width: 10),
@@ -277,11 +332,8 @@ class _StaffBento extends ConsumerWidget {
                   error: (_, _) => '—',
                 ),
                 subtitle: 'Parking free',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ParkingDashboardScreen(),
-                  ),
-                ),
+                onTap: () =>
+                    ref.read(homeShellTabIndexProvider.notifier).state = 1,
               ),
             ),
           ],
@@ -306,24 +358,88 @@ class _StaffBento extends ConsumerWidget {
                       icon: Icons.groups_rounded,
                       title: 'Directory',
                       subtitle: 'Manage accounts',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const StaffUserSearchScreen(),
-                        ),
-                      ),
+                      onTap: () =>
+                          ref.read(homeShellTabIndexProvider.notifier).state =
+                              4,
                     )
                   : _BentoTile(
                       icon: Icons.person_outline_rounded,
                       title: 'Profile',
                       subtitle: 'Your account',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileScreen(),
-                        ),
-                      ),
+                      onTap: () =>
+                          ref.read(homeShellTabIndexProvider.notifier).state =
+                              3,
                     ),
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+        _BentoTile(
+          icon: Icons.campaign_outlined,
+          title: 'Send Announcement',
+          subtitle: 'Broadcast a push notice to students or staff',
+          horizontal: true,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const BroadcastAnnouncementScreen(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _BentoTile(
+                icon: Icons.map_outlined,
+                iconColor: Colors.teal,
+                title: '3D Campus Map',
+                subtitle: 'Navigate the campus',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GlobalMapScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _BentoTile(
+                icon: Icons.meeting_room_rounded,
+                title: 'Book a room',
+                subtitle: 'Discussion rooms',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BookingScreen()),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _BentoTile(
+          icon: Icons.event_note_rounded,
+          title: 'My bookings',
+          subtitle: 'Check your booking status',
+          horizontal: true,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NfcCheckinScreen()),
+            ),
+            icon: const Icon(Icons.play_circle_fill, color: Colors.white),
+            label: const Text(
+              'Check-In Demo',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
         ),
       ],
     );

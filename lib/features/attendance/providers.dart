@@ -131,6 +131,24 @@ final termInfoProvider = FutureProvider.autoDispose<TermInfo>((ref) {
   return ref.watch(attendanceRepositoryProvider).fetchTermInfo();
 });
 
+/// This week's schedule (Mon-Sun) for the signed-in lecturer, across every
+/// course they teach — the read-only counterpart of myTimetableWeekProvider
+/// for staff, used by the "My Timetable" view (as opposed to Manage
+/// Timetable, which is course-scoped and edit-capable).
+final myLecturerTimetableWeekProvider = FutureProvider.autoDispose
+    .family<List<TimetableOccurrence>, DateTime>((ref, weekStart) {
+      final lecturerId = ref.watch(currentUserIdProvider);
+      if (lecturerId == null) return Future.value(const <TimetableOccurrence>[]);
+      return ref
+          .watch(attendanceRepositoryProvider)
+          .fetchLecturerOccurrences(
+            lecturerId: lecturerId,
+            courseIds: const [],
+            from: weekStart,
+            to: weekStart.add(const Duration(days: 6)),
+          );
+    });
+
 /// A lecturer's own occurrences for one calendar month, narrowed to the
 /// courses chosen on the Manage Timetable course-picker step. Keyed by a
 /// sorted, comma-joined course-id string rather than a raw List, since
@@ -158,3 +176,48 @@ final lecturerOccurrencesForMonthProvider = FutureProvider.autoDispose
             );
       },
     );
+
+/// Reschedule requests visible to the current user — RLS decides whether
+/// that's just their own (staff) or every request (admin), so this same
+/// provider backs both "My Requests" and the admin review queue.
+final rescheduleRequestsProvider = FutureProvider.autoDispose<
+  List<RescheduleRequest>
+>((ref) {
+  ref.watch(currentUserIdProvider);
+  return ref.watch(attendanceRepositoryProvider).fetchRescheduleRequests();
+});
+
+final pendingRescheduleRequestCountProvider = Provider.autoDispose<int>((
+  ref,
+) {
+  final requests = ref.watch(rescheduleRequestsProvider).value ?? const [];
+  return requests
+      .where((r) => r.status == RescheduleRequestStatus.pending)
+      .length;
+});
+
+/// Staff Attendance charts. The summary is scoped server-side to the
+/// caller's own courses (admin: all); the two families take whichever
+/// course the screen's filter currently has selected.
+final courseAttendanceSummaryProvider = FutureProvider.autoDispose<
+  List<CourseAttendanceSummary>
+>((ref) {
+  ref.watch(currentUserIdProvider);
+  return ref.watch(attendanceRepositoryProvider).fetchCourseAttendanceSummary();
+});
+
+final courseAttendanceTrendProvider = FutureProvider.autoDispose
+    .family<List<AttendanceTrendPoint>, String>((ref, courseId) {
+      ref.watch(currentUserIdProvider);
+      return ref
+          .watch(attendanceRepositoryProvider)
+          .fetchCourseAttendanceTrend(courseId);
+    });
+
+final courseStudentAttendanceProvider = FutureProvider.autoDispose
+    .family<List<CourseStudentAttendance>, String>((ref, courseId) {
+      ref.watch(currentUserIdProvider);
+      return ref
+          .watch(attendanceRepositoryProvider)
+          .fetchCourseStudentAttendance(courseId);
+    });

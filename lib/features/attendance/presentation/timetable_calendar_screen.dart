@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../user_management/data/models.dart';
+import '../../user_management/providers.dart';
 import '../data/models.dart';
 import '../providers.dart';
 import 'add_edit_schedule_slot_screen.dart';
+import 'request_reschedule_screen.dart';
 import 'reschedule_class_screen.dart';
 
 /// Second step of the Manage Timetable flow — a month calendar highlighting
@@ -90,7 +93,12 @@ class _TimetableCalendarScreenState
         .then((_) => _refresh());
   }
 
+  /// Admin still reschedules instantly (writes the exception directly, as
+  /// before); staff now submits a request for admin to approve — see
+  /// request_class_reschedule's own ownership check, which is exactly the
+  /// same one create_schedule_exception already applies to admin.
   void _reschedule(TimetableOccurrence occurrence) {
+    final isAdmin = ref.read(currentProfileProvider).value?.role == UserRole.admin;
     final slot = ScheduleSlot(
       id: occurrence.scheduleId!,
       courseId: occurrence.courseId,
@@ -106,18 +114,24 @@ class _TimetableCalendarScreenState
     Navigator.of(context)
         .push(
           MaterialPageRoute(
-            builder: (_) => RescheduleClassScreen(
-              slot: slot,
-              originalDate: occurrence.occurrenceDate,
-              // Already moved once — pre-fill with where it currently
-              // moved to, so re-rescheduling edits that instead of
-              // starting over from the recurring template's usual time.
-              currentMoveDate: occurrence.movedToDate,
-              currentMoveStartTime: occurrence.movedToStartTime,
-              currentMoveEndTime: occurrence.movedToEndTime,
-              currentMoveRoomId: occurrence.movedToRoomId,
-              currentMoveRoomName: occurrence.movedToRoomName,
-            ),
+            builder: (_) => isAdmin
+                ? RescheduleClassScreen(
+                    slot: slot,
+                    originalDate: occurrence.occurrenceDate,
+                    // Already moved once — pre-fill with where it
+                    // currently moved to, so re-rescheduling edits that
+                    // instead of starting over from the recurring
+                    // template's usual time.
+                    currentMoveDate: occurrence.movedToDate,
+                    currentMoveStartTime: occurrence.movedToStartTime,
+                    currentMoveEndTime: occurrence.movedToEndTime,
+                    currentMoveRoomId: occurrence.movedToRoomId,
+                    currentMoveRoomName: occurrence.movedToRoomName,
+                  )
+                : RequestRescheduleScreen(
+                    slot: slot,
+                    originalDate: occurrence.occurrenceDate,
+                  ),
           ),
         )
         .then((_) => _refresh());
@@ -491,8 +505,23 @@ class _OccurrenceManageCard extends StatelessWidget {
                   if (o.status != TimetableOccurrenceStatus.cancelled) ...[
                     const SizedBox(height: 4),
                     Text(
-                      '${_fmt(o.startTime)} – ${_fmt(o.endTime)} · ${o.roomName}',
+                      '${_fmt(o.startTime)} – ${_fmt(o.endTime)}',
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          o.locationLabel,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
                   ],
                   if (o.status == TimetableOccurrenceStatus.movedAway &&

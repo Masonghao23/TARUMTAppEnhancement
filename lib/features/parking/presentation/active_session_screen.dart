@@ -214,11 +214,13 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                       )
                     : const Text('Finish'),
               ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _busy ? null : _extend,
-                child: const Text('Extend'),
-              ),
+              if (!ended) ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _busy ? null : _extend,
+                  child: const Text('Extend'),
+                ),
+              ],
             ],
           ),
         ),

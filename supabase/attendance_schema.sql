@@ -215,8 +215,24 @@ begin
     );
   end if;
 
+  -- on conflict do nothing: a concurrent second scan, or a lecturer's
+  -- manual mark (set_attendance_status) landing between the select above
+  -- and this insert, would otherwise raise an unhandled unique-violation
+  -- straight to the client instead of the graceful "already checked in".
   insert into public.attendance_records (session_id, student_id, device_identifier, distance_meters)
-  values (p_session_id, auth.uid(), p_device_identifier, v_distance);
+  values (p_session_id, auth.uid(), p_device_identifier, v_distance)
+  on conflict (session_id, student_id) do nothing;
+
+  if not found then
+    select * into v_existing from public.attendance_records
+    where session_id = p_session_id and student_id = auth.uid();
+    return jsonb_build_object(
+      'success', true,
+      'already_checked_in', true,
+      'distance_meters', v_distance,
+      'checked_in_at', v_existing.scan_timestamp
+    );
+  end if;
 
   return jsonb_build_object(
     'success', true,
@@ -337,7 +353,15 @@ grant select (
   id, course_id, room_id, lecturer_id, qr_interval_seconds,
   status, start_time, end_time
 ) on public.class_sessions to authenticated;
-grant insert, update on public.class_sessions to authenticated;
+-- UPDATE is column-restricted to match: endSession() only flips status +
+-- end_time. Without this, class_sessions_update_own (row-scoped, no
+-- with-check) lets a lecturer PATCH course_id / room_id /
+-- qr_interval_seconds / schedule_id on their own session, bypassing every
+-- check in start_scheduled_session. INSERT stays broad for now — it's
+-- gated by class_sessions_insert_staff (staff role required) and the
+-- normal path is the start_scheduled_session RPC; tighten later.
+grant insert on public.class_sessions to authenticated;
+grant update (status, end_time) on public.class_sessions to authenticated;
 grant select on public.attendance_records to authenticated;
 
 alter table public.courses enable row level security;

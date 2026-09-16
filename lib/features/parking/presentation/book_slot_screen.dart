@@ -126,13 +126,20 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
         showDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const AlertDialog(
-            content: Row(
-              children: [
-                CircularProgressIndicator(strokeWidth: 2),
-                SizedBox(width: 20),
-                Text('Processing payment...'),
-              ],
+          // barrierDismissible only blocks tap-outside — without this, the
+          // back button/gesture could still pop the dialog early, and the
+          // pop() below would then close BookSlotScreen itself instead
+          // while the booking RPC kept running unseen in the background.
+          builder: (_) => const PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(strokeWidth: 2),
+                  SizedBox(width: 20),
+                  Text('Processing payment...'),
+                ],
+              ),
             ),
           ),
         ),

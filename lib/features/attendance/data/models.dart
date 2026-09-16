@@ -329,12 +329,14 @@ class TimetableOccurrence {
     required this.endTime,
     required this.roomId,
     required this.roomName,
+    this.buildingName,
     required this.status,
     this.movedToDate,
     this.movedToStartTime,
     this.movedToEndTime,
     this.movedToRoomId,
     this.movedToRoomName,
+    this.movedToBuildingName,
     this.scheduleId,
     this.exceptionId,
   });
@@ -352,6 +354,7 @@ class TimetableOccurrence {
       endTime: WallClockTime.parse(map['end_time'] as String),
       roomId: map['room_id'] as String,
       roomName: map['room_name'] as String? ?? '',
+      buildingName: map['building_name'] as String?,
       status: _occurrenceStatusFromString(map['status'] as String? ?? 'normal'),
       movedToDate: map['moved_to_date'] != null
           ? DateTime.parse(map['moved_to_date'] as String)
@@ -364,6 +367,7 @@ class TimetableOccurrence {
           : null,
       movedToRoomId: map['moved_to_room_id'] as String?,
       movedToRoomName: map['moved_to_room_name'] as String?,
+      movedToBuildingName: map['moved_to_building_name'] as String?,
       // Only present in get_lecturer_occurrences' management-facing
       // output — get_my_timetable_week (student-facing) doesn't return
       // these columns at all, so they parse to null there, which is
@@ -382,16 +386,23 @@ class TimetableOccurrence {
   final WallClockTime endTime;
   final String roomId;
   final String roomName;
+  final String? buildingName;
   final TimetableOccurrenceStatus status;
   final DateTime? movedToDate;
   final WallClockTime? movedToStartTime;
   final WallClockTime? movedToEndTime;
   final String? movedToRoomId;
   final String? movedToRoomName;
+  final String? movedToBuildingName;
   final String? scheduleId;
   final String? exceptionId;
 
   double get durationHours => endTime.decimalHours - startTime.decimalHours;
+
+  /// "Building · Room", or just the room if the facility has no building
+  /// (matches the shared facilities table's nullable building_id).
+  String get locationLabel =>
+      buildingName == null ? roomName : '$buildingName · $roomName';
 }
 
 /// The shared term window every class_schedule row currently uses —
@@ -568,7 +579,7 @@ class ScheduleActionResult {
     return ScheduleActionResult(
       success: map['success'] as bool? ?? false,
       reason: map['reason'] as String?,
-      id: (map['scheduleId'] ?? map['exceptionId']) as String?,
+      id: (map['scheduleId'] ?? map['exceptionId'] ?? map['requestId']) as String?,
     );
   }
 
@@ -591,4 +602,232 @@ class ScannedSessionToken {
   final String token;
 
   String encode() => '$sessionId|$token';
+}
+
+enum RescheduleRequestStatus { pending, approved, rejected, withdrawn }
+
+RescheduleRequestStatus _requestStatusFromString(String value) {
+  switch (value) {
+    case 'approved':
+      return RescheduleRequestStatus.approved;
+    case 'rejected':
+      return RescheduleRequestStatus.rejected;
+    case 'withdrawn':
+      return RescheduleRequestStatus.withdrawn;
+    default:
+      return RescheduleRequestStatus.pending;
+  }
+}
+
+/// A lecturer's request to move or cancel one occurrence of their own
+/// recurring slot, awaiting admin approval — see
+/// reschedule_requests_schema.sql. RLS already scopes what a caller can
+/// see (their own requests, or everything if admin), so the same fetch —
+/// and the same model — serves both "My Requests" (staff) and the review
+/// queue (admin); the UI decides which actions to show based on role.
+class RescheduleRequest {
+  const RescheduleRequest({
+    required this.id,
+    required this.scheduleId,
+    required this.originalDate,
+    required this.courseId,
+    required this.courseName,
+    required this.sessionType,
+    required this.exceptionType,
+    required this.originalStartTime,
+    required this.originalEndTime,
+    required this.originalRoomName,
+    required this.reason,
+    required this.requestedBy,
+    required this.requesterName,
+    required this.status,
+    required this.createdAt,
+    this.newDate,
+    this.newStartTime,
+    this.newEndTime,
+    this.newRoomId,
+    this.newRoomName,
+    this.reviewComment,
+  });
+
+  factory RescheduleRequest.fromMap(Map<String, dynamic> map) {
+    final course = map['courses'] as Map<String, dynamic>?;
+    final schedule = map['class_schedule'] as Map<String, dynamic>?;
+    final scheduleRoom = schedule?['facilities'] as Map<String, dynamic>?;
+    final newRoom = map['new_room'] as Map<String, dynamic>?;
+    final requester = map['requester'] as Map<String, dynamic>?;
+
+    return RescheduleRequest(
+      id: map['id'] as String,
+      scheduleId: map['schedule_id'] as String,
+      originalDate: DateTime.parse(map['original_date'] as String),
+      courseId: map['course_id'] as String,
+      courseName: course?['course_name'] as String? ?? '',
+      sessionType: _slotTypeFromString(
+        map['session_type'] as String? ?? 'lecture',
+      ),
+      exceptionType: map['exception_type'] as String? ?? 'move',
+      originalStartTime: WallClockTime.parse(
+        schedule?['start_time'] as String? ?? '00:00',
+      ),
+      originalEndTime: WallClockTime.parse(
+        schedule?['end_time'] as String? ?? '00:00',
+      ),
+      originalRoomName: scheduleRoom?['room_name'] as String? ?? '',
+      newDate: map['occurrence_date'] != null
+          ? DateTime.parse(map['occurrence_date'] as String)
+          : null,
+      newStartTime: map['start_time'] != null
+          ? WallClockTime.parse(map['start_time'] as String)
+          : null,
+      newEndTime: map['end_time'] != null
+          ? WallClockTime.parse(map['end_time'] as String)
+          : null,
+      newRoomId: map['room_id'] as String?,
+      newRoomName: newRoom?['room_name'] as String?,
+      reason: map['reason'] as String? ?? '',
+      requestedBy: map['requested_by'] as String,
+      requesterName: requester?['name'] as String? ?? '',
+      status: _requestStatusFromString(map['status'] as String? ?? 'pending'),
+      reviewComment: map['review_comment'] as String?,
+      createdAt: DateTime.parse(map['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final String scheduleId;
+  final DateTime originalDate;
+  final String courseId;
+  final String courseName;
+  final SessionSlotType sessionType;
+
+  /// 'move' or 'cancel'.
+  final String exceptionType;
+  final WallClockTime originalStartTime;
+  final WallClockTime originalEndTime;
+  final String originalRoomName;
+
+  /// Only set when [exceptionType] is 'move'.
+  final DateTime? newDate;
+  final WallClockTime? newStartTime;
+  final WallClockTime? newEndTime;
+  final String? newRoomId;
+  final String? newRoomName;
+
+  final String reason;
+  final String requestedBy;
+  final String requesterName;
+  final RescheduleRequestStatus status;
+  final String? reviewComment;
+  final DateTime createdAt;
+}
+
+/// One course's roll-up for the staff Attendance charts screen — it names
+/// the course in the picker and feeds the headline figures above it.
+/// [attendancePercent] is hour-weighted across every enrolled student
+/// (sum attended / sum total), so it agrees with the figure each student
+/// sees for themselves and with the 80% notification threshold.
+class CourseAttendanceSummary {
+  const CourseAttendanceSummary({
+    required this.courseId,
+    required this.courseCode,
+    required this.courseName,
+    required this.studentCount,
+    required this.attendedHours,
+    required this.totalHours,
+    required this.attendancePercent,
+  });
+
+  factory CourseAttendanceSummary.fromMap(Map<String, dynamic> map) {
+    return CourseAttendanceSummary(
+      courseId: map['course_id'] as String,
+      courseCode: map['course_code'] as String? ?? '',
+      courseName: map['course_name'] as String? ?? '',
+      studentCount: (map['student_count'] as num?)?.toInt() ?? 0,
+      attendedHours: (map['attended_hours'] as num?)?.toDouble() ?? 0,
+      totalHours: (map['total_hours'] as num?)?.toDouble() ?? 0,
+      attendancePercent: (map['attendance_percent'] as num?)?.toDouble(),
+    );
+  }
+
+  final String courseId;
+  final String courseCode;
+  final String courseName;
+  final int studentCount;
+  final double attendedHours;
+  final double totalHours;
+
+  /// Null when no hours have been scheduled yet — shown as "—", never 0%.
+  final double? attendancePercent;
+}
+
+/// One point on a course's attendance trend — a single session that was
+/// actually held. Within one session every student shares the same
+/// duration, so this is plain attended/enrolled rather than hour-weighted.
+class AttendanceTrendPoint {
+  const AttendanceTrendPoint({
+    required this.sessionId,
+    required this.sessionDate,
+    required this.sessionType,
+    required this.enrolledCount,
+    required this.attendedCount,
+    required this.attendancePercent,
+  });
+
+  factory AttendanceTrendPoint.fromMap(Map<String, dynamic> map) {
+    return AttendanceTrendPoint(
+      sessionId: map['session_id'] as String,
+      sessionDate: DateTime.parse(map['session_date'] as String),
+      sessionType: map['session_type'] as String?,
+      enrolledCount: (map['enrolled_count'] as num?)?.toInt() ?? 0,
+      attendedCount: (map['attended_count'] as num?)?.toInt() ?? 0,
+      attendancePercent: (map['attendance_percent'] as num?)?.toDouble(),
+    );
+  }
+
+  final String sessionId;
+  final DateTime sessionDate;
+
+  /// Null on sessions created before session_type existed on class_sessions.
+  final String? sessionType;
+  final int enrolledCount;
+  final int attendedCount;
+  final double? attendancePercent;
+}
+
+/// One enrolled student's standing in a single course — the unit behind
+/// both the pass/at-risk pie and the detail list under it.
+class CourseStudentAttendance {
+  const CourseStudentAttendance({
+    required this.studentId,
+    required this.studentName,
+    required this.attendedHours,
+    required this.totalHours,
+    required this.attendancePercent,
+  });
+
+  factory CourseStudentAttendance.fromMap(Map<String, dynamic> map) {
+    return CourseStudentAttendance(
+      studentId: map['student_id'] as String,
+      studentName: map['student_name'] as String? ?? '',
+      attendedHours: (map['attended_hours'] as num?)?.toDouble() ?? 0,
+      totalHours: (map['total_hours'] as num?)?.toDouble() ?? 0,
+      attendancePercent: (map['attendance_percent'] as num?)?.toDouble(),
+    );
+  }
+
+  final String studentId;
+  final String studentName;
+  final double attendedHours;
+  final double totalHours;
+
+  /// Null when the course has no scheduled hours yet — such a student
+  /// counts as neither meeting nor missing the requirement.
+  final double? attendancePercent;
+
+  bool get meetsThreshold =>
+      attendancePercent != null && attendancePercent! >= 80;
+
+  bool get isBelowThreshold =>
+      attendancePercent != null && attendancePercent! < 80;
 }

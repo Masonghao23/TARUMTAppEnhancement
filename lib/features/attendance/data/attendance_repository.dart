@@ -151,6 +151,118 @@ class AttendanceRepository {
     );
   }
 
+  /// Staff-only — submits a reschedule/cancel as a pending request instead
+  /// of writing the exception directly (admin still reschedules instantly
+  /// via createScheduleException above; see request_class_reschedule for
+  /// the ownership/role check that enforces this split).
+  Future<ScheduleActionResult> requestClassReschedule({
+    required String scheduleId,
+    required DateTime originalDate,
+    required String exceptionType,
+    DateTime? occurrenceDate,
+    WallClockTime? startTime,
+    WallClockTime? endTime,
+    String? roomId,
+    required String reason,
+  }) async {
+    final response = await _client.rpc(
+      'request_class_reschedule',
+      params: {
+        'p_schedule_id': scheduleId,
+        'p_original_date': _dateOnly(originalDate),
+        'p_exception_type': exceptionType,
+        'p_occurrence_date': occurrenceDate == null
+            ? null
+            : _dateOnly(occurrenceDate),
+        'p_start_time': startTime == null ? null : _timeOnly(startTime),
+        'p_end_time': endTime == null ? null : _timeOnly(endTime),
+        'p_room_id': roomId,
+        'p_reason': reason,
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// The requester changes their own still-pending request.
+  Future<ScheduleActionResult> updateRescheduleRequest({
+    required String requestId,
+    required String exceptionType,
+    DateTime? occurrenceDate,
+    WallClockTime? startTime,
+    WallClockTime? endTime,
+    String? roomId,
+    required String reason,
+  }) async {
+    final response = await _client.rpc(
+      'update_reschedule_request',
+      params: {
+        'p_request_id': requestId,
+        'p_exception_type': exceptionType,
+        'p_occurrence_date': occurrenceDate == null
+            ? null
+            : _dateOnly(occurrenceDate),
+        'p_start_time': startTime == null ? null : _timeOnly(startTime),
+        'p_end_time': endTime == null ? null : _timeOnly(endTime),
+        'p_room_id': roomId,
+        'p_reason': reason,
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// The requester withdraws their own still-pending request.
+  Future<ScheduleActionResult> withdrawRescheduleRequest(
+    String requestId,
+  ) async {
+    final response = await _client.rpc(
+      'withdraw_reschedule_request',
+      params: {'p_request_id': requestId},
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// Admin-only — approving actually applies the change via
+  /// create_schedule_exception server-side; rejecting leaves the timetable
+  /// untouched. [comment] is optional either way, shown to the requester.
+  Future<ScheduleActionResult> reviewRescheduleRequest({
+    required String requestId,
+    required String decision,
+    String? comment,
+  }) async {
+    final response = await _client.rpc(
+      'review_reschedule_request',
+      params: {
+        'p_request_id': requestId,
+        'p_decision': decision,
+        'p_comment': comment,
+      },
+    );
+    return ScheduleActionResult.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
+  /// RLS scopes this to the caller's own requests, or every request if
+  /// they're admin — see reschedule_requests_schema.sql.
+  Future<List<RescheduleRequest>> fetchRescheduleRequests() async {
+    final rows = await _client
+        .from('reschedule_requests')
+        .select(
+          '*, courses(course_name), '
+          'class_schedule(start_time, end_time, facilities(room_name)), '
+          'new_room:facilities!reschedule_requests_room_id_fkey(room_name), '
+          'requester:profiles!reschedule_requests_requested_by_fkey(name)',
+        )
+        .order('created_at', ascending: false);
+    return rows.map(RescheduleRequest.fromMap).toList();
+  }
+
   /// The QR seed is only ever readable through this RPC (see
   /// attendance_schema.sql) so that no student can read it straight off the
   /// class_sessions row and fabricate a token without scanning a live QR.
@@ -423,5 +535,39 @@ class AttendanceRepository {
     return CourseAttendanceHours.fromMap(
       (rows as List).first as Map<String, dynamic>,
     );
+  }
+
+  /// Staff analytics — each of these is scoped server-side to the courses
+  /// the caller actually teaches (admin sees all), so there's no course
+  /// filter to pass and nothing useful comes back for a student.
+  Future<List<CourseAttendanceSummary>> fetchCourseAttendanceSummary() async {
+    final rows = await _client.rpc('get_staff_course_attendance');
+    return (rows as List)
+        .map((r) => CourseAttendanceSummary.fromMap(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<AttendanceTrendPoint>> fetchCourseAttendanceTrend(
+    String courseId,
+  ) async {
+    final rows = await _client.rpc(
+      'get_course_attendance_trend',
+      params: {'p_course_id': courseId},
+    );
+    return (rows as List)
+        .map((r) => AttendanceTrendPoint.fromMap(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<CourseStudentAttendance>> fetchCourseStudentAttendance(
+    String courseId,
+  ) async {
+    final rows = await _client.rpc(
+      'get_course_student_attendance',
+      params: {'p_course_id': courseId},
+    );
+    return (rows as List)
+        .map((r) => CourseStudentAttendance.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 }

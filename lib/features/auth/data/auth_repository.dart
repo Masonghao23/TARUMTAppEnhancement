@@ -20,6 +20,14 @@ class AuthRepository {
     return _client.auth.resetPasswordForEmail(email);
   }
 
+  /// Only valid mid password-recovery — the session at that point is the
+  /// short-lived one Supabase grants after the reset-link exchange
+  /// succeeds, not a normal sign-in. Emits AuthChangeEvent.userUpdated on
+  /// success, which is what tells _AuthGate the recovery flow is done.
+  Future<void> updatePassword(String newPassword) {
+    return _client.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
   Future<void> signOut() {
     return _client.auth.signOut();
   }

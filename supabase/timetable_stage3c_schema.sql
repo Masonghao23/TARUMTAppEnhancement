@@ -175,6 +175,24 @@ begin
       return jsonb_build_object('success', false, 'reason', 'New date, time and room are required to move a class.');
     end if;
 
+    -- A class started directly off the recurring slot (start_scheduled_session
+    -- writes class_sessions.schedule_id + occurrence_date, exception_id null)
+    -- has no exception row for the FK catch below to trip on — but moving or
+    -- cancelling that occurrence now makes calculate_course_attendance_hours
+    -- drop it from every enrolled student's totals, silently voiding scans
+    -- already taken. Refuse retroactive changes to an occurrence that's
+    -- already been held. (A reschedule requested while the class was still
+    -- in the future has no session yet, so it's unaffected.)
+    if exists (
+      select 1 from public.class_sessions
+      where schedule_id = p_schedule_id and occurrence_date = p_original_date
+    ) then
+      return jsonb_build_object(
+        'success', false,
+        'reason', 'This class has already been held — its schedule can no longer be changed.'
+      );
+    end if;
+
     begin
       delete from public.class_schedule_exceptions
       where schedule_id = p_schedule_id

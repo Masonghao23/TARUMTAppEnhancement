@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../campus_map/campus_map_screen.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// Stage 1 of the Timetable feature — a read-only weekly view for
-/// students. Session-linking and the hour-based attendance calculation
-/// that depends on it are later stages; this screen only shows the
-/// schedule itself.
+/// Stage 1 of the Timetable feature — a read-only weekly view, for
+/// students by default. [forLecturer] switches it to the same read-only
+/// view scoped to the signed-in lecturer's own classes across every course
+/// they teach — the counterpart to Manage Timetable (which is course-picked
+/// and edit-capable) for staff who just want to see their week, the same
+/// way students do. Session-linking and the hour-based attendance
+/// calculation that depends on it are later stages; this screen only shows
+/// the schedule itself.
 class TimetableScreen extends ConsumerStatefulWidget {
-  const TimetableScreen({super.key});
+  const TimetableScreen({super.key, this.forLecturer = false});
+
+  final bool forLecturer;
 
   @override
   ConsumerState<TimetableScreen> createState() => _TimetableScreenState();
@@ -50,7 +57,11 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final occurrencesAsync = ref.watch(myTimetableWeekProvider(_weekStart));
+    final occurrencesAsync = ref.watch(
+      widget.forLecturer
+          ? myLecturerTimetableWeekProvider(_weekStart)
+          : myTimetableWeekProvider(_weekStart),
+    );
     final termInfo = ref.watch(termInfoProvider).value;
 
     // Null until termInfo loads (near-instant) — nav is briefly uncapped in
@@ -300,8 +311,43 @@ class _OccurrenceCard extends StatelessWidget {
                   if (!cancelled) ...[
                     const SizedBox(height: 4),
                     Text(
-                      '${_fmtTime(o.startTime)} – ${_fmtTime(o.endTime)} · ${o.roomName}',
+                      '${_fmtTime(o.startTime)} – ${_fmtTime(o.endTime)}',
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CampusMapScreen(initialQuery: o.roomName),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: scheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              o.locationLabel,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: scheme.primary,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: scheme.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                   if (movedAway && o.movedToDate != null)

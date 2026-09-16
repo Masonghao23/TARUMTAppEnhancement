@@ -42,13 +42,14 @@ class FloatingNavBar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               for (var i = 0; i < items.length; i++)
-                _NavButton(
-                  item: items[i],
-                  selected: i == selectedIndex,
-                  onTap: () => onDestinationSelected(i),
+                Expanded(
+                  child: _NavButton(
+                    item: items[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onDestinationSelected(i),
+                  ),
                 ),
             ],
           ),
@@ -77,7 +78,7 @@ class _NavButton extends StatelessWidget {
       onTap: onTap,
       customBorder: const StadiumBorder(),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -89,6 +90,8 @@ class _NavButton extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               item.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
                 fontSize: 10.5,
