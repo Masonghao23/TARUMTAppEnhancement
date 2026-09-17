@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../campus_map/campus_map_screen.dart';
 import '../../user_management/data/models.dart';
 import '../../user_management/providers.dart';
 import '../data/models.dart';
@@ -509,19 +510,34 @@ class _OccurrenceManageCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CampusMapScreen(initialQuery: o.roomName),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          o.locationLabel,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              o.locationLabel,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                   if (o.status == TimetableOccurrenceStatus.movedAway &&

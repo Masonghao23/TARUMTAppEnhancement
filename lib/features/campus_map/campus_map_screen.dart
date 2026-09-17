@@ -44,10 +44,9 @@ final InAppLocalhostServer localhostServer = InAppLocalhostServer(documentRoot: 
 class CampusMapScreen extends StatefulWidget {
   const CampusMapScreen({super.key, this.initialQuery});
 
-  /// A venue code or building name to search and navigate to as soon as the
-  /// 3D model finishes loading — used to deep-link here from a timetable
-  /// class's location icon. Left null for the normal manual-search entry
-  /// point (the campus map tile on Home).
+  /// A venue code or building name from the timetable. Outdoor navigation
+  /// starts once the 3D model loads; the indoor navigation button then opens
+  /// the venue's floor plan. Left null for the campus map tile on Home.
   final String? initialQuery;
 
   @override
@@ -156,18 +155,22 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     return [startLoc, endLoc];
   }
 
-  void _showFloorPlanModal(String buildingName, {String? destination}) {
+  String? _resolveIndoorDestination(String? destination) {
     final normalizedDestination = destination?.toUpperCase().replaceAll(RegExp(r'[\s_-]+'), '');
-    String? endLocation;
     for (final key in arenaLocations.keys) {
       if (key.toUpperCase().replaceAll(RegExp(r'[\s_-]+'), '') == normalizedDestination) {
-        endLocation = key;
-        break;
+        return key;
       }
     }
-    String selectedLevel = endLocation == null ? '2' : arenaLocations[endLocation]!.level;
-    // Indoor GPS cannot identify a room. Preview the mapped route from the
-    // destination floor's escalator and let the user change the starting point.
+    return null;
+  }
+
+  void _showFloorPlanModal(String buildingName, {String? destination}) {
+    String? endLocation = _resolveIndoorDestination(destination);
+    // TA201 navigation begins at the ground-floor entrance escalator.
+    // Users can change the starting point if they are already upstairs.
+    String selectedLevel = endLocation == 'TA 201'
+        ? 'G' : endLocation == null ? '2' : arenaLocations[endLocation]!.level;
     final escalatorKey = 'Escalator (${selectedLevel == 'G' ? 'G' : 'L$selectedLevel'})';
     String? startLocation = endLocation != null && arenaLocations.containsKey(escalatorKey)
         ? escalatorKey : null;
