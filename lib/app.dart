@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/auth/providers.dart';
+import 'features/home/providers.dart' as home_providers;
 import 'features/user_management/presentation/home_shell.dart';
 
 class TarumtApp extends ConsumerWidget {
@@ -28,6 +29,20 @@ class _AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // signedIn only fires for an interactive sign-in (session restored on
+    // cold start is initialSession instead), so this resets HomeShell back
+    // to its Home tab on every real login — otherwise homeShellTabIndexProvider
+    // (not autoDispose) would keep whatever tab a previous session left it
+    // on if the user logs out and back in without restarting the app.
+    ref.listen<AsyncValue<AuthState>>(authStateChangesProvider, (
+      previous,
+      next,
+    ) {
+      if (next.value?.event == AuthChangeEvent.signedIn) {
+        ref.read(home_providers.homeShellTabIndexProvider.notifier).state = 2;
+      }
+    });
+
     final authState = ref.watch(authStateChangesProvider);
 
     return authState.when(
