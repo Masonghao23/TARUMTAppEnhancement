@@ -167,10 +167,9 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
 
   void _showFloorPlanModal(String buildingName, {String? destination}) {
     String? endLocation = _resolveIndoorDestination(destination);
-    // TA201 navigation begins at the ground-floor entrance escalator.
+    // Indoor navigation opens at the ground-floor entrance.
     // Users can change the starting point if they are already upstairs.
-    String selectedLevel = endLocation == 'TA 201'
-        ? 'G' : endLocation == null ? '2' : arenaLocations[endLocation]!.level;
+    String selectedLevel = 'G';
     final escalatorKey = 'Escalator (${selectedLevel == 'G' ? 'G' : 'L$selectedLevel'})';
     String? startLocation = endLocation != null && arenaLocations.containsKey(escalatorKey)
         ? escalatorKey : null;
