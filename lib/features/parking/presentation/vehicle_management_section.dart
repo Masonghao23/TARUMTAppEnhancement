@@ -5,12 +5,10 @@ import '../../../core/theme/app_theme.dart';
 import '../providers.dart';
 import 'add_vehicle_dialog.dart';
 
-/// FR07 — store multiple vehicle plate numbers for parking slot
-/// reservation. Embedded as a section in ProfileScreen, same pattern as
-/// DeviceBindingSection.
 class VehicleManagementSection extends ConsumerWidget {
   const VehicleManagementSection({super.key});
 
+  /// Builds the vehicle management section interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehiclesAsync = ref.watch(myVehiclesProvider);

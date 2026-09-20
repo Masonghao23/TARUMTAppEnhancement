@@ -6,12 +6,10 @@ import '../../user_management/providers.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// Stage 2 of the Timetable feature — the hour-based percentage per
-/// enrolled course, same math as the Home ring (overallAttendanceHoursProvider)
-/// just broken out instead of averaged.
 class CourseAttendanceScreen extends ConsumerWidget {
   const CourseAttendanceScreen({super.key});
 
+  /// Builds the course attendance screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final studentId = ref.watch(currentUserIdProvider);
@@ -56,15 +54,12 @@ class CourseAttendanceScreen extends ConsumerWidget {
   }
 }
 
-/// Overall attendance across every enrolled course, in one bordered card —
-/// the border/tint colour reflects the same 80% good/bad threshold as each
-/// [_CourseRow] below it, so a struggling overall average is visible before
-/// even reading the number.
 class _OverallCard extends StatelessWidget {
   const _OverallCard({required this.hours});
 
   final CourseAttendanceHours? hours;
 
+  /// Builds the overall card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -133,6 +128,7 @@ class _CourseRow extends ConsumerWidget {
   final String studentId;
   final Course course;
 
+  /// Builds the course row interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;

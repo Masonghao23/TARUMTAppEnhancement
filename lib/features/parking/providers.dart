@@ -8,9 +8,6 @@ final parkingRepositoryProvider = Provider<ParkingRepository>((ref) {
   return ParkingRepository(ref.watch(supabaseClientProvider));
 });
 
-/// Ticks whenever any parking_reservations row changes, so the live
-/// dashboard can refetch promptly instead of only on its polling timer
-/// (NFR2: parking availability shall update within 5 seconds).
 final parkingReservationsRealtimeProvider = StreamProvider.autoDispose<void>((
   ref,
 ) {
@@ -21,7 +18,6 @@ final parkingReservationsRealtimeProvider = StreamProvider.autoDispose<void>((
       .map((_) {});
 });
 
-/// Occupancy "right now" for the live dashboard/floor map.
 final liveParkingSlotsProvider = FutureProvider.autoDispose<List<ParkingSlot>>((
   ref,
 ) {
@@ -35,17 +31,16 @@ class ParkingWindow {
   final DateTime start;
   final DateTime end;
 
+  /// Compares parking windows by their start and end times.
   @override
   bool operator ==(Object other) =>
       other is ParkingWindow && other.start == start && other.end == end;
 
+  /// Computes a hash from the parking window’s start and end times.
   @override
   int get hashCode => Object.hash(start, end);
 }
 
-/// Availability for a specific future date/time + duration the user is
-/// choosing in the booking flow — separate from [liveParkingSlotsProvider]
-/// since this is keyed by an explicit window, not "now".
 final parkingAvailabilityProvider = FutureProvider.autoDispose
     .family<List<ParkingSlot>, ParkingWindow>((ref, window) {
       ref.watch(parkingReservationsRealtimeProvider);

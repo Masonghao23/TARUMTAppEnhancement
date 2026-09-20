@@ -10,9 +10,6 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   return NotificationRepository(ref.watch(supabaseClientProvider));
 });
 
-/// Depends on [currentUserIdProvider] purely so the cache invalidates on a
-/// user switch (logout/login as someone else without an app restart) —
-/// fetchMyNotifications() itself just reads whoever's currently signed in.
 final myNotificationsProvider = FutureProvider.autoDispose<
   List<AppNotification>
 >((ref) {
@@ -42,10 +39,6 @@ final pushNotificationServiceProvider = Provider<PushNotificationService>((
   return service;
 });
 
-/// Watching this from the widget tree (see HomeShell) is what actually
-/// triggers FCM setup — it re-runs once per distinct signed-in user, not on
-/// every rebuild, since it depends on [currentUserIdProvider] rather than
-/// running unconditionally.
 final pushNotificationSetupProvider = FutureProvider.autoDispose<void>((
   ref,
 ) async {

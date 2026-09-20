@@ -7,19 +7,17 @@ class AttendanceRepository {
 
   final SupabaseClient _client;
 
-  // class_sessions only grants column-level SELECT on these columns —
-  // dynamic_qr_seed is deliberately excluded (see attendance_schema.sql).
-  // Requesting `*` against a column-restricted grant fails the whole
-  // query, so every read of this table must list columns explicitly.
   static const _sessionColumns =
       'id, course_id, room_id, lecturer_id, qr_interval_seconds, '
       'status, start_time, end_time';
 
+  /// Fetches the available courses.
   Future<List<Course>> fetchCourses() async {
     final rows = await _client.from('courses').select().order('course_code');
     return rows.map(Course.fromMap).toList();
   }
 
+  /// Fetches facilities and their building information.
   Future<List<Facility>> fetchFacilities() async {
     final rows = await _client
         .from('facilities')
@@ -28,9 +26,7 @@ class AttendanceRepository {
     return rows.map(Facility.fromMap).toList();
   }
 
-  /// This week's/today's real timetable slots this lecturer can start a
-  /// session for — "starting a session" means starting one of these, never
-  /// a freehand course+room pick (see start_scheduled_session below).
+  /// Fetches the lecturer’s startable timetable slots for a date.
   Future<List<LecturerSlot>> fetchLecturerScheduleForDate({
     required String lecturerId,
     required DateTime date,
@@ -44,9 +40,7 @@ class AttendanceRepository {
         .toList();
   }
 
-  /// Idempotent — calling this again for a slot that's already been
-  /// started returns that same session (alreadyStarted: true) rather than
-  /// creating a duplicate or erroring.
+  /// Starts a scheduled class or returns its existing session.
   Future<StartSessionResult> startScheduledSession({
     String? scheduleId,
     String? exceptionId,
@@ -65,16 +59,18 @@ class AttendanceRepository {
     );
   }
 
+  /// Formats a date for database requests.
   static String _dateOnly(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
 
+  /// Formats a wall-clock time for database requests.
   static String _timeOnly(WallClockTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:'
       '${t.minute.toString().padLeft(2, '0')}';
 
-  /// [id] null creates a new recurring slot; non-null edits that slot.
+  /// Creates or updates a recurring timetable slot.
   Future<ScheduleActionResult> upsertClassSchedule({
     String? id,
     required String courseId,
@@ -101,8 +97,7 @@ class AttendanceRepository {
     );
   }
 
-  /// [exceptionType] is 'move', 'cancel', or 'add' — see
-  /// timetable_stage3_schema.sql for which fields each one needs.
+  /// Moves, cancels, or adds a timetable occurrence.
   Future<ScheduleActionResult> createScheduleException({
     required String exceptionType,
     String? scheduleId,
@@ -137,8 +132,7 @@ class AttendanceRepository {
     );
   }
 
-  /// Reverts a move/cancel back to the normal recurring occurrence, or
-  /// removes a standalone 'add' — the "Undo" action.
+  /// Removes a timetable exception to undo a schedule change.
   Future<ScheduleActionResult> removeScheduleException(
     String exceptionId,
   ) async {
@@ -151,10 +145,7 @@ class AttendanceRepository {
     );
   }
 
-  /// Staff-only — submits a reschedule/cancel as a pending request instead
-  /// of writing the exception directly (admin still reschedules instantly
-  /// via createScheduleException above; see request_class_reschedule for
-  /// the ownership/role check that enforces this split).
+  /// Submits a class reschedule or cancellation request for approval.
   Future<ScheduleActionResult> requestClassReschedule({
     required String scheduleId,
     required DateTime originalDate,
@@ -185,7 +176,7 @@ class AttendanceRepository {
     );
   }
 
-  /// The requester changes their own still-pending request.
+  /// Updates the requester’s pending reschedule request.
   Future<ScheduleActionResult> updateRescheduleRequest({
     required String requestId,
     required String exceptionType,
@@ -214,7 +205,7 @@ class AttendanceRepository {
     );
   }
 
-  /// The requester withdraws their own still-pending request.
+  /// Withdraws the requester’s pending reschedule request.
   Future<ScheduleActionResult> withdrawRescheduleRequest(
     String requestId,
   ) async {
@@ -227,9 +218,7 @@ class AttendanceRepository {
     );
   }
 
-  /// Admin-only — approving actually applies the change via
-  /// create_schedule_exception server-side; rejecting leaves the timetable
-  /// untouched. [comment] is optional either way, shown to the requester.
+  /// Approves or rejects a reschedule request.
   Future<ScheduleActionResult> reviewRescheduleRequest({
     required String requestId,
     required String decision,
@@ -248,8 +237,7 @@ class AttendanceRepository {
     );
   }
 
-  /// RLS scopes this to the caller's own requests, or every request if
-  /// they're admin — see reschedule_requests_schema.sql.
+  /// Fetches reschedule requests visible to the current user.
   Future<List<RescheduleRequest>> fetchRescheduleRequests() async {
     final rows = await _client
         .from('reschedule_requests')
@@ -263,9 +251,7 @@ class AttendanceRepository {
     return rows.map(RescheduleRequest.fromMap).toList();
   }
 
-  /// The QR seed is only ever readable through this RPC (see
-  /// attendance_schema.sql) so that no student can read it straight off the
-  /// class_sessions row and fabricate a token without scanning a live QR.
+  /// Fetches the session’s QR signing seed.
   Future<String> fetchSessionSeed(String sessionId) async {
     final response = await _client.rpc(
       'get_session_seed',
@@ -274,6 +260,7 @@ class AttendanceRepository {
     return response as String;
   }
 
+  /// Marks a class session as ended.
   Future<void> endSession(String sessionId) async {
     await _client
         .from('class_sessions')
@@ -284,6 +271,7 @@ class AttendanceRepository {
         .eq('id', sessionId);
   }
 
+  /// Fetches the lecturer’s recent class sessions.
   Future<List<ClassSession>> fetchMySessions(String lecturerId) async {
     final rows = await _client
         .from('class_sessions')
@@ -296,12 +284,7 @@ class AttendanceRepository {
     return rows.map(ClassSession.fromMap).toList();
   }
 
-  /// Only this lecturer's currently-active sessions — powers the "Live now"
-  /// list on the main Attendance tab. Unbounded on purpose: unlike the full
-  /// history, there will only ever be a small handful of sessions truly
-  /// active at once, so a 50-row cap shared with history isn't the right
-  /// fit here — a session could in principle be excluded by 50+ more
-  /// recent *ended* sessions even though it's still live.
+  /// Fetches the lecturer’s active class sessions.
   Future<List<ClassSession>> fetchActiveSessions(String lecturerId) async {
     final rows = await _client
         .from('class_sessions')
@@ -314,13 +297,7 @@ class AttendanceRepository {
     return rows.map(ClassSession.fromMap).toList();
   }
 
-  /// One page of this lecturer's ended sessions, filtered server-side by
-  /// course/date — unlike [fetchMySessions], this doesn't filter a capped
-  /// client-side snapshot (which can only ever "see" the 50 most recent
-  /// sessions overall, silently hiding older ones from any filter no
-  /// matter how narrow). Call again with an increasing [offset] — equal to
-  /// how many rows have been loaded so far — for "load more"; [limit] rows
-  /// returned means there may be another page.
+  /// Fetches a page of ended sessions filtered by course and date.
   Future<List<ClassSession>> fetchSessionHistoryPage({
     required String lecturerId,
     String? courseId,
@@ -351,10 +328,7 @@ class AttendanceRepository {
     return rows.map(ClassSession.fromMap).toList();
   }
 
-  /// The live "Checked in" list — real scans only. The realtime stream API
-  /// only supports the one equality filter, so 'absent'/'leave' rows (which
-  /// only exist from a lecturer's manual override, see [setAttendanceStatus])
-  /// are filtered out client-side rather than in the query itself.
+  /// Streams present and late attendance records for a session.
   Stream<List<AttendanceRecord>> watchRoster(String sessionId) {
     return _client
         .from('attendance_records')
@@ -369,10 +343,7 @@ class AttendanceRepository {
         );
   }
 
-  /// Every student enrolled in this session's course with their current
-  /// attendance status — includes students who never scanned (shown as
-  /// 'absent'/'pending', not stored as a real row until overridden). Powers
-  /// the lecturer's "Manage attendance" screen.
+  /// Fetches every enrolled student’s attendance status for a session.
   Future<List<RosterEntry>> fetchSessionRoster(String sessionId) async {
     final rows = await _client.rpc(
       'get_session_roster',
@@ -383,8 +354,7 @@ class AttendanceRepository {
         .toList();
   }
 
-  /// Lecturer override of one student's status for a session — works for a
-  /// live session or one that's already ended.
+  /// Sets a student’s attendance status for a session.
   Future<ScheduleActionResult> setAttendanceStatus({
     required String sessionId,
     required String studentId,
@@ -403,6 +373,7 @@ class AttendanceRepository {
     );
   }
 
+  /// Submits an attendance check-in for server validation.
   Future<AttendanceResult> submitAttendance({
     required String sessionId,
     required String token,
@@ -423,9 +394,7 @@ class AttendanceRepository {
     return AttendanceResult.fromMap(Map<String, dynamic>.from(response as Map));
   }
 
-  /// Batch-resolves display names for a live roster, which only streams
-  /// raw attendance_records rows (Supabase realtime `.stream()` cannot
-  /// embed a join to `profiles`).
+  /// Fetches display names for the supplied user IDs.
   Future<Map<String, String>> fetchNamesByIds(List<String> userIds) async {
     if (userIds.isEmpty) return {};
     final rows = await _client
@@ -437,6 +406,7 @@ class AttendanceRepository {
     };
   }
 
+  /// Fetches the student’s attendance history.
   Future<List<AttendanceHistoryEntry>> fetchMyHistory(String studentId) async {
     final rows = await _client
         .from('attendance_records')
@@ -447,6 +417,7 @@ class AttendanceRepository {
     return rows.map(AttendanceHistoryEntry.fromMap).toList();
   }
 
+  /// Fetches the courses the student is enrolled in.
   Future<List<Course>> fetchMyEnrolledCourses(String studentId) async {
     final rows = await _client
         .from('course_enrollments')
@@ -459,6 +430,7 @@ class AttendanceRepository {
         .toList();
   }
 
+  /// Fetches timetable occurrences for the selected week.
   Future<List<TimetableOccurrence>> fetchMyTimetableWeek({
     required String studentId,
     required DateTime weekStart,
@@ -476,9 +448,7 @@ class AttendanceRepository {
         .toList();
   }
 
-  /// A lecturer's own occurrences across an arbitrary date range (a
-  /// calendar month, for the Manage Timetable flow), optionally narrowed
-  /// to a set of courses. Null/empty [courseIds] means "every course".
+  /// Fetches the lecturer’s timetable occurrences within a date range.
   Future<List<TimetableOccurrence>> fetchLecturerOccurrences({
     required String lecturerId,
     required List<String> courseIds,
@@ -499,10 +469,7 @@ class AttendanceRepository {
         .toList();
   }
 
-  /// Every class_schedule row currently shares one effective_from/
-  /// term_weeks (one shared university-wide term, not per-course), so the
-  /// first row is representative — falls back to "this Monday, 12 weeks"
-  /// if the timetable hasn't been seeded yet.
+  /// Fetches the shared term dates or returns default term information.
   Future<TermInfo> fetchTermInfo() async {
     final rows = await _client
         .from('class_schedule')
@@ -524,6 +491,7 @@ class AttendanceRepository {
     );
   }
 
+  /// Fetches the student’s attended and scheduled course hours.
   Future<CourseAttendanceHours> fetchCourseAttendanceHours({
     required String studentId,
     required String courseId,
@@ -537,9 +505,7 @@ class AttendanceRepository {
     );
   }
 
-  /// Staff analytics — each of these is scoped server-side to the courses
-  /// the caller actually teaches (admin sees all), so there's no course
-  /// filter to pass and nothing useful comes back for a student.
+  /// Fetches attendance summaries for courses visible to the caller.
   Future<List<CourseAttendanceSummary>> fetchCourseAttendanceSummary() async {
     final rows = await _client.rpc('get_staff_course_attendance');
     return (rows as List)
@@ -547,6 +513,7 @@ class AttendanceRepository {
         .toList();
   }
 
+  /// Fetches attendance trend points for a course.
   Future<List<AttendanceTrendPoint>> fetchCourseAttendanceTrend(
     String courseId,
   ) async {
@@ -559,6 +526,7 @@ class AttendanceRepository {
         .toList();
   }
 
+  /// Fetches each student’s attendance standing in a course.
   Future<List<CourseStudentAttendance>> fetchCourseStudentAttendance(
     String courseId,
   ) async {

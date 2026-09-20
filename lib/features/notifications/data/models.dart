@@ -7,6 +7,7 @@ enum NotificationCategory {
   broadcast,
 }
 
+/// Converts a stored notification category to its enum value.
 NotificationCategory _categoryFromString(String value) {
   switch (value) {
     case 'attendance':
@@ -24,9 +25,6 @@ NotificationCategory _categoryFromString(String value) {
   }
 }
 
-/// One row from the notifications table — either a trigger-generated alert
-/// (attendance/parking/class/booking) or a staff broadcast. See
-/// notification_triggers.sql for what actually creates these.
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -37,6 +35,7 @@ class AppNotification {
     required this.sentAt,
   });
 
+  /// Creates app notification data from a database row.
   factory AppNotification.fromMap(Map<String, dynamic> map) {
     return AppNotification(
       id: map['id'] as String,
@@ -56,11 +55,6 @@ class AppNotification {
   final DateTime sentAt;
 }
 
-/// A student's per-category push toggles — mirrors
-/// upsert_notification_preferences' parameters exactly. Every column
-/// defaults to true at the database level (opt-out, not opt-in), so
-/// [defaults] here is what a user who's never opened this screen actually
-/// receives.
 class NotificationPreferences {
   const NotificationPreferences({
     required this.allowAttendanceAlerts,
@@ -78,6 +72,7 @@ class NotificationPreferences {
     allowRescheduleUpdates: true,
   );
 
+  /// Creates notification preferences data from a database row.
   factory NotificationPreferences.fromMap(Map<String, dynamic> map) {
     return NotificationPreferences(
       allowAttendanceAlerts: map['allow_attendance_alerts'] as bool? ?? true,
@@ -95,6 +90,7 @@ class NotificationPreferences {
   final bool allowBookingReminders;
   final bool allowRescheduleUpdates;
 
+  /// Copies notification preferences with the supplied changes.
   NotificationPreferences copyWith({
     bool? allowAttendanceAlerts,
     bool? allowParkingAlerts,
@@ -115,9 +111,6 @@ class NotificationPreferences {
   }
 }
 
-/// Result of send_broadcast_announcement — recipientCount lets the screen
-/// confirm how many people it actually reached (target group membership
-/// isn't visible to the sender ahead of time).
 class BroadcastResult {
   const BroadcastResult({
     required this.success,
@@ -125,6 +118,7 @@ class BroadcastResult {
     this.recipientCount,
   });
 
+  /// Creates broadcast result data from a database row.
   factory BroadcastResult.fromMap(Map<String, dynamic> map) {
     return BroadcastResult(
       success: map['success'] as bool? ?? false,

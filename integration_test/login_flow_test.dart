@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Defines and runs the tests in this file.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -27,8 +28,6 @@ void main() {
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
 
-    // Give the network round trip (auth + profile fetch) time to settle,
-    // then surface whatever widget/exception state resulted.
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 500));
     }

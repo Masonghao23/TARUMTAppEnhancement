@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/config/supabase_config.dart';
 
+/// Initializes app services and launches the application.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,10 +22,7 @@ Future<void> main() async {
   runApp(const ProviderScope(child: TarumtApp()));
 }
 
-/// Firebase is only wired up for FCM (Notification module, not built yet)
-/// and only has config for Android so far. Push notifications degrade
-/// gracefully if this fails, so a missing/failing config on other
-/// platforms shouldn't block the rest of the app.
+/// Initializes Firebase when platform configuration is available.
 Future<void> _tryInitializeFirebase() async {
   final hasConfig = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
   if (!hasConfig) return;

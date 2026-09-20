@@ -5,17 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TAR UMT Hybrid 3D Map</title>
 
-    <!-- MapLibre GL JS -->
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
-    <!-- Three.js -->
     <script src="three.min.js"></script>
     <script src="GLTFLoader.js"></script>
     <script src="DRACOLoader.js"></script>
 
     <style>
-        /* --- 3D Building Labels --- */
         .building-label {
             background: rgba(255, 255, 255, 0.95);
             color: #1e293b;
@@ -30,7 +27,6 @@
             transform: translateY(-40px);
         }
 
-        /* --- Label Toggle Button --- */
         #toggle-labels-btn {
             position: absolute;
             bottom: 80px;
@@ -97,16 +93,14 @@
 </div>
 
 <script>
-    // =========================================================================
-    // 1. ALIGNMENT VARIABLES
-    // =========================================================================
     const MAP_ORIGIN_LNG = 101.72814;
     const MAP_ORIGIN_LAT = 3.21646;
     const MODEL_ROTATION_Y = 0.0;
     const MODEL_SCALE_MULTIPLIER = 1.0;
 
-    // Store building GPS coordinates dynamically parsed from the 3D model
     window.campusBuildingsMap = {};
+
+    // Calculates the distance between two GPS coordinates.
 
     function getDistanceInMeters(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
@@ -116,7 +110,6 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // === 2. MAPLIBRE INITIALIZATION ===
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
@@ -129,7 +122,6 @@
 
     map.addControl(new maplibregl.NavigationControl());
 
-    // === 3. THREE.JS HYBRID LAYER ===
     let threeScene, threeCamera, threeRenderer, gltfModel;
     let interactableObjects = [];
 
@@ -137,6 +129,8 @@
         id: '3d-model',
         type: 'custom',
         renderingMode: '3d',
+
+        // Initializes the 3D scene and loads the campus building model.
 
         onAdd: function (map, gl) {
             threeCamera = new THREE.Camera();
@@ -241,10 +235,6 @@
                 document.getElementById('loader').style.opacity = '0';
                 setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
 
-                // window.campusBuildingsMap is only populated once this GLTFLoader
-                // callback runs (it's async), so a deep-link search fired before
-                // this point would find zero buildings. Flutter waits for this
-                // signal before running an initial search.
                 if (window.flutter_inappwebview != null) {
                     window.flutter_inappwebview.callHandler('onModelReady');
                 }
@@ -253,6 +243,8 @@
             threeRenderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
             threeRenderer.autoClear = false;
         },
+
+        // Renders the 3D campus scene over the map.
 
         render: function (gl, matrix) {
             const modelAsMercatorCoordinate = maplibregl.MercatorCoordinate.fromLngLat(
@@ -286,11 +278,12 @@
         map.addLayer({ 'id': 'route-line', 'type': 'line', 'source': 'route', 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': '#2563eb', 'line-width': 6, 'line-opacity': 0.8 } });
     });
 
-    // === 4. INTERACTIVITY & UI ===
     let currentSelectedBuilding = "Arena";
     let currentSelectedVenue = null;
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
+    // Opens indoor navigation for the selected Arena destination.
 
     function showArenaIndoorNavigation() {
         currentSelectedBuilding = 'Arena';
@@ -308,8 +301,6 @@
         mouse.x = (e.point.x / canvas.clientWidth) * 2 - 1;
         mouse.y = -(e.point.y / canvas.clientHeight) * 2 + 1;
 
-        // MapLibre supplies a combined projection/model matrix on a generic
-        // Camera. Unproject the tap directly into the model's coordinate space.
         const inverseProjection = threeCamera.projectionMatrix.clone().invert();
         const near = new THREE.Vector3(mouse.x, mouse.y, -1).applyMatrix4(inverseProjection);
         const far = new THREE.Vector3(mouse.x, mouse.y, 1).applyMatrix4(inverseProjection);
@@ -334,7 +325,7 @@
         }
     });
 
-    // === 5. DYNAMIC SEARCH FUNCTION ===
+    // Finds the building matching a building name or venue code.
     function resolveCampusDestination(query, buildings) {
         const normalize = value => value.trim().toLowerCase().replace(/[\s_-]+/g, '');
         const searchTerm = normalize(query);
@@ -343,26 +334,23 @@
         const entries = Object.entries(buildings);
         const exactBuilding = name => entries.find(([key]) => normalize(key) === name)?.[1] || null;
 
-        // Keep full building names (including lecture halls) ahead of venue rules.
         const exactMatch = exactBuilding(searchTerm);
         if (exactMatch) return exactMatch;
 
-        // A venue is a letter prefix, optionally followed by a room number/suffix.
-        // Match the entire prefix so TA never becomes Block T, or PA Block P.
         const venue = searchTerm.match(/^([a-z]+)(?:\d+[a-z]?)?$/);
         if (venue) {
             const prefix = venue[1];
             if (prefix === 'ta') return exactBuilding('arena');
             const block = exactBuilding('block' + prefix);
             if (block) return block;
-            // Unknown room codes must not fall through to an unrelated partial match.
             if (/\d/.test(searchTerm) || prefix.length === 1) return null;
         }
 
-        // Preserve partial building-name search, but only when unambiguous.
         const matches = entries.filter(([key]) => normalize(key).includes(searchTerm));
         return matches.length === 1 ? matches[0][1] : null;
     }
+
+    // Finds the searched building and starts navigation.
 
     window.searchBuildingAndNavigate = function(query) {
         currentSelectedVenue = null;
@@ -385,7 +373,6 @@
         return false;
     };
 
-    // === 6. LIVE GPS & GRAPHHOPPER NAVIGATION ===
     const MAIN_GATE_LAT = 3.215450;
     const MAIN_GATE_LNG = 101.728200;
 
@@ -400,13 +387,19 @@
     const userMarker = new maplibregl.Marker({ element: blueDotElement }).setLngLat([MAIN_GATE_LNG, MAIN_GATE_LAT]).addTo(map);
     let destinationMarker = null;
 
+    // Checks whether coordinates fall within the campus bounds.
+
     function isWithinCampus(lat, lng) { return (lat >= 3.2000 && lat <= 3.2300 && lng >= 101.7100 && lng <= 101.7400); }
+
+    // Updates the user’s location marker on the map.
 
     window.updateLiveLocation = function(lat, lng) {
         currentLiveLat = isWithinCampus(lat, lng) ? lat : MAIN_GATE_LAT;
         currentLiveLng = isWithinCampus(lat, lng) ? lng : MAIN_GATE_LNG;
         userMarker.setLngLat([currentLiveLng, currentLiveLat]);
     };
+
+    // Shows a walking route to the selected building.
 
     window.navigateToRoom = async function(buildingName, destLng, destLat) {
         document.getElementById('building-chatbox').style.display = 'none';
@@ -416,12 +409,8 @@
             .setLngLat([destLng, destLat])
             .addTo(map);
 
-        // ==========================================
-        // INSERT YOUR GRAPHHOPPER API KEY HERE:
-        // ==========================================
         const graphHopperKey = '0875f290-011e-45f5-b03b-155b8e1d621a';
 
-        // GraphHopper API uses Lat,Lng format!
         const ghUrl = `https://graphhopper.com/api/1/route?point=${currentLiveLat},${currentLiveLng}&point=${destLat},${destLng}&profile=foot&locale=en&points_encoded=false&key=${graphHopperKey}`;
 
         try {
@@ -429,9 +418,8 @@
             const data = await response.json();
 
             if (data.paths && data.paths.length > 0) {
-                const routeDistance = data.paths[0].distance; // Distance in meters
+                const routeDistance = data.paths[0].distance;
 
-                // FYP Safety Net: If the route is over 1.5km (routing off-campus), fall back to direct line
                 if (routeDistance > 1500) {
                     console.warn("GraphHopper route exceeds 1.5km. Falling back to direct path.");
                     map.getSource('route').setData({
@@ -439,7 +427,6 @@
                         'coordinates': [[currentLiveLng, currentLiveLat], [destLng, destLat]]
                     });
                 } else {
-                    // GraphHopper successfully found a safe pedestrian path!
                     map.getSource('route').setData({
                         'type': 'Feature',
                         'properties': {},
@@ -464,7 +451,6 @@
         }
     };
 
-    // === 7. LABEL TOGGLE LOGIC ===
     let labelsVisible = true;
 
     document.getElementById('toggle-labels-btn').addEventListener('click', function() {

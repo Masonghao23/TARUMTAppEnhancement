@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class IndoorFloorStep {
+  /// Determines which route markers to show on the viewed floor.
   IndoorFloorStep(String start, String destination, String viewed) {
+    /// Converts a floor label to its numeric level.
     int number(String level) => level == 'G' ? 0 : int.parse(level);
     final from = number(start);
     final to = number(destination);
@@ -20,6 +22,7 @@ class IndoorFloorStep {
   late final bool showFloorChange;
 }
 
+/// Describes how many floors to travel to reach the destination.
 String floorChangeInstruction(String currentLevel, String destinationLevel) {
   final current = currentLevel == 'G' ? 0 : int.parse(currentLevel);
   final destination = destinationLevel == 'G' ? 0 : int.parse(destinationLevel);
@@ -30,8 +33,6 @@ String floorChangeInstruction(String currentLevel, String destinationLevel) {
       '${count == 1 ? 'floor' : 'floors'} to Level $destinationLevel';
 }
 
-/// The image, route and markers share one transform and one image-sized canvas.
-/// The gesture surface fills the viewport, including the image's blank margins.
 class IndoorFloorPlan extends StatefulWidget {
   const IndoorFloorPlan({
     super.key,
@@ -58,6 +59,7 @@ class IndoorFloorPlan extends StatefulWidget {
   final String? escalatorInstruction;
   final bool goingUp;
 
+  /// Creates the mutable state for this widget.
   @override
   State<IndoorFloorPlan> createState() => _IndoorFloorPlanState();
 }
@@ -69,18 +71,21 @@ class _IndoorFloorPlanState extends State<IndoorFloorPlan> {
   bool _failed = false;
   bool _labelsVisible = true;
 
+  /// Refreshes resources that depend on the widget context.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _resolveImage();
   }
 
+  /// Updates local state when the widget configuration changes.
   @override
   void didUpdateWidget(covariant IndoorFloorPlan oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.image != widget.image) _resolveImage();
   }
 
+  /// Loads the floor-plan image and tracks its dimensions.
   void _resolveImage() {
     if (_listener != null) _stream?.removeListener(_listener!);
     _imageSize = null;
@@ -96,12 +101,14 @@ class _IndoorFloorPlanState extends State<IndoorFloorPlan> {
     _stream!.addListener(_listener!);
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     if (_listener != null) _stream?.removeListener(_listener!);
     super.dispose();
   }
 
+  /// Builds a labeled marker on the indoor floor plan.
   Widget _marker(Offset point, Size size, IconData icon, String text, Color color, {bool below = false}) {
     return Positioned(
       left: point.dx * size.width,
@@ -110,8 +117,6 @@ class _IndoorFloorPlanState extends State<IndoorFloorPlan> {
         valueListenable: widget.controller,
         builder: (context, transform, child) {
           final zoom = transform.getMaxScaleOnAxis();
-          // Keep labels readable at low zoom and prevent them covering whole
-          // rooms at high zoom, while still visibly resizing with each gesture.
           final screenScale = (0.7 + 0.3 * zoom).clamp(0.85, 2.2);
           return Transform.scale(
             scale: screenScale / zoom,
@@ -143,6 +148,7 @@ class _IndoorFloorPlanState extends State<IndoorFloorPlan> {
     );
   }
 
+  /// Builds the indoor floor plan interface.
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
@@ -209,6 +215,7 @@ class _IndoorRoutePainter extends CustomPainter {
   _IndoorRoutePainter(this.route);
   final List<Offset> route;
 
+  /// Draws the indoor route on the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     if (route.isEmpty) return;
@@ -224,6 +231,7 @@ class _IndoorRoutePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round);
   }
 
+  /// Checks whether changed painter inputs require repainting.
   @override
   bool shouldRepaint(covariant _IndoorRoutePainter oldDelegate) => oldDelegate.route != route;
 }

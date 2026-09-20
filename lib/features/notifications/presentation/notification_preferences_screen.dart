@@ -5,13 +5,10 @@ import '../../../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// FR05 / use case "Set Notification Preferences" — five toggles, each
-/// captioned with which trigger(s) it gates (see notification_triggers.sql
-/// for the actual conditions). Saves the full set on every toggle since
-/// upsert_notification_preferences always takes all five values together.
 class NotificationPreferencesScreen extends ConsumerStatefulWidget {
   const NotificationPreferencesScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<NotificationPreferencesScreen> createState() =>
       _NotificationPreferencesScreenState();
@@ -22,6 +19,7 @@ class _NotificationPreferencesScreenState
   NotificationPreferences? _prefs;
   bool _saving = false;
 
+  /// Updates and saves the selected notification preference.
   Future<void> _toggle(
     NotificationPreferences Function(NotificationPreferences) update,
   ) async {
@@ -47,6 +45,7 @@ class _NotificationPreferencesScreenState
     }
   }
 
+  /// Builds the notification preferences screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -147,6 +146,7 @@ class _PreferenceTile extends StatelessWidget {
   final bool enabled;
   final ValueChanged<bool> onChanged;
 
+  /// Builds the preference tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

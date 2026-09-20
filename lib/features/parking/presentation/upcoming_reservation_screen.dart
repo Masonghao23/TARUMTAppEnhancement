@@ -5,15 +5,12 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'extend_duration_dialog.dart';
 
-/// FR05 — a reservation that hasn't started yet is still extendable, same
-/// as an active one; extend_parking_reservation only checks the reservation
-/// is still 'reserved', not that it's already in progress. No live
-/// countdown or "Finish" here, since there's nothing running yet to end.
 class UpcomingReservationScreen extends ConsumerStatefulWidget {
   const UpcomingReservationScreen({super.key, required this.reservation});
 
   final ParkingReservation reservation;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<UpcomingReservationScreen> createState() =>
       _UpcomingReservationScreenState();
@@ -24,12 +21,14 @@ class _UpcomingReservationScreenState
   late ParkingReservation _reservation;
   bool _busy = false;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
     _reservation = widget.reservation;
   }
 
+  /// Prompts for extra hours and extends the parking reservation.
   Future<void> _extend() async {
     final additionalHours = await showExtendHoursDialog(context);
     if (additionalHours == null) return;
@@ -44,9 +43,6 @@ class _UpcomingReservationScreenState
           );
       if (!mounted) return;
       if (!result.success) {
-        // Extension only succeeds if the server's conditions are met — no
-        // overlap with another reservation on the slot, and it can't push
-        // past 12:00 AM. Whichever one failed, its reason is shown as-is.
         _showMessage(result.reason ?? 'Could not extend reservation.');
         return;
       }
@@ -77,6 +73,7 @@ class _UpcomingReservationScreenState
     }
   }
 
+  /// Confirms and cancels the upcoming parking reservation.
   Future<void> _cancel() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -111,9 +108,6 @@ class _UpcomingReservationScreenState
           .cancelReservation(_reservation.id);
       if (!mounted) return;
       if (!result.success) {
-        // Only succeeds while the reservation is still upcoming — the
-        // server rejects it once the start time has already passed (an
-        // active session uses Finish instead), with that reason shown here.
         _showMessage(result.reason ?? 'Could not cancel reservation.');
         return;
       }
@@ -126,16 +120,20 @@ class _UpcomingReservationScreenState
     }
   }
 
+  /// Displays a feedback message to the user.
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
+  /// Formats a time for display.
   String _fmtTime(DateTime d) => TimeOfDay.fromDateTime(d).format(context);
 
+  /// Builds the upcoming reservation screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

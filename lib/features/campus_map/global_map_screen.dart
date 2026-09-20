@@ -9,17 +9,15 @@ import 'package:latlong2/latlong.dart';
 
 import 'campus_map_screen.dart';
 
-/// Ported from tarumt_app's GlobalMapScreen — same OSM outdoor map, live
-/// location tracking, and road-route polyline to campus.
 class GlobalMapScreen extends StatefulWidget {
   const GlobalMapScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   State<GlobalMapScreen> createState() => _GlobalMapScreenState();
 }
 
 class _GlobalMapScreenState extends State<GlobalMapScreen> {
-  // TAR UMT Campus Coordinates
   final LatLng campusLocation = const LatLng(3.2140, 101.7260);
 
   LatLng? userLocation;
@@ -27,16 +25,17 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
   StreamSubscription<Position>? _positionStream;
   final MapController _mapController = MapController();
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
     _startTracking();
   }
 
+  /// Fetches a walking route to the selected destination.
   Future<void> _fetchRoadRoute() async {
     if (userLocation == null) return;
 
-    // OSRM requires the format to be Longitude,Latitude
     final String url = 'http://router.project-osrm.org/route/v1/driving/'
         '${userLocation!.longitude},${userLocation!.latitude};'
         '${campusLocation.longitude},${campusLocation.latitude}'
@@ -50,7 +49,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
         final List coordinates = data['routes'][0]['geometry']['coordinates'];
 
         setState(() {
-          // OSRM returns [Longitude, Latitude], but FlutterMap needs [Latitude, Longitude]
           roadRoute = coordinates.map((coord) => LatLng(coord[1], coord[0])).toList();
         });
       }
@@ -59,6 +57,7 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
     }
   }
 
+  /// Starts location tracking for the outdoor map.
   Future<void> _startTracking() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -69,7 +68,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
       if (permission == LocationPermission.denied) return;
     }
 
-    // Get initial position quickly
     Position initialPos = await Geolocator.getCurrentPosition();
     if (!mounted) return;
     setState(() {
@@ -77,11 +75,10 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
       _fetchRoadRoute();
     });
 
-    // Constantly listen for movement
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 10, // Update every 10 meters
+        distanceFilter: 10,
       ),
     ).listen((Position position) {
       if (!mounted) return;
@@ -91,12 +88,14 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
     });
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _positionStream?.cancel();
     super.dispose();
   }
 
+  /// Builds the global map screen interface.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +105,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
       ),
       body: Stack(
         children: [
-          // --- 1. The 2D OpenStreetMap ---
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -120,7 +118,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
                 userAgentPackageName: 'com.tarumt.finalyearproject.map',
               ),
 
-              // Draw a line connecting the user to the campus
               if (userLocation != null)
                 PolylineLayer(
                   polylines: [
@@ -134,14 +131,12 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
 
               MarkerLayer(
                 markers: [
-                  // The Campus Destination Marker
                   Marker(
                     point: campusLocation,
                     width: 100,
                     height: 100,
                     child: GestureDetector(
                       onTap: () {
-                        // Tapping the red marker also opens the 3D map
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const CampusMapScreen()));
                       },
                       child: const Column(
@@ -153,7 +148,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
                     ),
                   ),
 
-                  // The User's Live Location Blue Dot
                   if (userLocation != null)
                     Marker(
                       point: userLocation!,
@@ -173,7 +167,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
             ],
           ),
 
-          // --- 2. Focus on My Location Button ---
           Positioned(
             top: 20,
             right: 20,
@@ -189,7 +182,6 @@ class _GlobalMapScreenState extends State<GlobalMapScreen> {
             ),
           ),
 
-          // --- 3. Big Button to enter the 3D Campus Map ---
           Positioned(
             bottom: 30,
             left: 20,

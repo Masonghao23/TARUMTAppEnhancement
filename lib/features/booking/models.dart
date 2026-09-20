@@ -1,6 +1,3 @@
-/// A bookable room, read directly from public.facilities/public.buildings
-/// (both have public "select_all" RLS policies already, so no RPC needed
-/// just to list rooms).
 class BookableFacility {
   const BookableFacility({
     required this.id,
@@ -11,6 +8,7 @@ class BookableFacility {
     required this.buildingName,
   });
 
+  /// Creates bookable facility data from a database row.
   factory BookableFacility.fromMap(Map<String, dynamic> map) {
     final building = map['buildings'] as Map<String, dynamic>?;
     return BookableFacility(
@@ -30,10 +28,10 @@ class BookableFacility {
   final int? capacity;
   final String? buildingName;
 
+  /// Returns whether the facility is available for booking.
   bool get isAvailable => status == 'available';
 }
 
-/// A booking as returned by get_my_bookings().
 class Booking {
   const Booking({
     required this.id,
@@ -49,6 +47,7 @@ class Booking {
     required this.createdAt,
   });
 
+  /// Creates booking data from a database row.
   factory Booking.fromMap(Map<String, dynamic> map) {
     return Booking(
       id: map['id'] as String,
@@ -78,11 +77,10 @@ class Booking {
   final DateTime createdAt;
 }
 
-/// The {success, reason?} jsonb shape every booking RPC returns, matching
-/// ParkingActionResult's pattern.
 class BookingActionResult {
   const BookingActionResult({required this.success, this.reason, this.data});
 
+  /// Creates booking action result data from a database row.
   factory BookingActionResult.fromMap(Map<String, dynamic> map) {
     return BookingActionResult(
       success: map['success'] as bool? ?? false,

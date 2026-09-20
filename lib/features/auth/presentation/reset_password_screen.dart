@@ -5,16 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers.dart';
 
-/// Shown by _AuthGate in place of HomeShell while the session is a
-/// password-recovery one (AuthChangeEvent.passwordRecovery) — reached by
-/// clicking the emailed reset link, which must be opened in the same
-/// browser that requested it (PKCE code verifier lives in that browser's
-/// local storage). On success this calls updatePassword, which emits
-/// AuthChangeEvent.userUpdated; _AuthGate reacts to that by swapping back
-/// to the normal signed-in view on its own.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ResetPasswordScreen> createState() =>
       _ResetPasswordScreenState();
@@ -27,6 +21,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   bool _obscure = true;
   bool _isSubmitting = false;
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _passwordController.dispose();
@@ -34,6 +29,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 
+  /// Validates and saves the new password.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -46,9 +42,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password updated. You\'re signed in.')),
       );
-      // No-op in the normal case (this screen already is the root, swapped
-      // in by _AuthGate) — just a safety net in case anything's pushed on
-      // top of it, so the now-signed-in HomeShell is what's actually shown.
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on AuthException catch (e) {
       _showError(e.message);
@@ -59,12 +52,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     }
   }
 
+  /// Displays an error message on the screen.
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Builds the reset password screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

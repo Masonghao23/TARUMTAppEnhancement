@@ -6,12 +6,10 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'notification_preferences_screen.dart';
 
-/// The notification feed — grouped Today/Yesterday/Earlier, matching the
-/// report's mockup (Fig 4.4). Tapping a card marks it read; nothing more
-/// happens beyond that for now (no per-type deep link into the app yet).
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
+  /// Formats a date heading for grouped notifications.
   static String _dayLabel(DateTime sentAt) {
     final now = DateTime.now();
     final local = sentAt.toLocal();
@@ -23,6 +21,7 @@ class NotificationsScreen extends ConsumerWidget {
     return 'Earlier';
   }
 
+  /// Builds the notifications screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -134,6 +133,7 @@ class _NotificationCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback onDelete;
 
+  /// Returns the icon for the notification category.
   static IconData _icon(NotificationCategory category) {
     switch (category) {
       case NotificationCategory.attendance:
@@ -151,6 +151,7 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
+  /// Returns the color for the notification category.
   static Color _color(BuildContext context, NotificationCategory category) {
     final scheme = Theme.of(context).colorScheme;
     switch (category) {
@@ -169,6 +170,7 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
+  /// Formats a time for display.
   String _fmtTime(DateTime dt) {
     final local = dt.toLocal();
     final now = DateTime.now();
@@ -182,6 +184,7 @@ class _NotificationCard extends StatelessWidget {
     return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} · $time';
   }
 
+  /// Builds the notification card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

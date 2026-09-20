@@ -1,6 +1,3 @@
-// Deno edge function: only a caller whose profile role is 'admin' may use
-// this to create a new student or staff account. The service role key never
-// leaves this server-side function.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -8,10 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Creates student or staff accounts for authenticated admins.
 Deno.serve(async (req) => {
-  // Browsers send a CORS preflight OPTIONS request before the real POST
-  // whenever a custom header (Authorization) is involved. Without this, the
-  // browser blocks the actual request before it ever reaches the code below.
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -82,8 +77,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Password must be at least 8 characters" }, 400);
   }
 
-  // Mirrors the profiles_campus_id_format check constraint: students use
-  // 2-digit enrolment year + 5-digit index (7 digits), staff use a 4-digit ID.
   const campusIdPattern = role === "student" ? /^[0-9]{7}$/ : /^[0-9]{4}$/;
   if (!campusIdPattern.test(campusId)) {
     const example = role === "student" ? "2408009" : "1234";
@@ -108,11 +101,6 @@ Deno.serve(async (req) => {
 
   const userId = created.user?.id;
 
-  // Enrollment is only meaningful for students, and course_enrollments has
-  // no INSERT grant for `authenticated` (see attendance_schema.sql) — the
-  // service-role client bypasses RLS to write it here. A failure at this
-  // step doesn't roll back the just-created account; it's surfaced as a
-  // warning alongside the userId instead.
   if (role === "student" && courseIds && courseIds.length > 0 && userId) {
     const { error: enrollError } = await adminClient
       .from("course_enrollments")
@@ -129,6 +117,7 @@ Deno.serve(async (req) => {
   return jsonResponse({ userId }, 200);
 });
 
+// Creates a JSON response with CORS headers.
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,

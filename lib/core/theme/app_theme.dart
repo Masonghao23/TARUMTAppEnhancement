@@ -1,38 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Central design tokens + [ThemeData] for the app.
-///
-/// The visual language: a single accent color, generous rounded corners,
-/// flat/borderless surfaces (elevation via subtle color layering, not
-/// shadows), and Inter for typography.
 class AppTheme {
   AppTheme._();
 
   static const Color _seed = Color(0xFF4F63F0);
 
-  // A warm "campus amber" standing in for the seed-derived tertiary, used
-  // sparingly as the accent that pairs with the indigo primary (role chips,
-  // ID-card edge, small highlights) — the algorithmic tertiary from
-  // ColorScheme.fromSeed reads too close to primary to read as a second hue.
   static const Color _accentLight = Color(0xFFB9660A);
   static const Color _accentContainerLight = Color(0xFFFFEACB);
   static const Color _accentDark = Color(0xFFF0B15A);
   static const Color _accentContainerDark = Color(0xFF5C4108);
 
-  // Not part of ColorScheme (Material3 has no standalone "success" slot) —
-  // used wherever "available"/"bound"/"on time" needs to read as positive
-  // rather than borrowing tertiary, which is now the amber accent above.
   static const Color _successLight = Color(0xFF0E9A5C);
   static const Color _successContainerLight = Color(0xFFDCF6E8);
   static const Color _successDark = Color(0xFF3DD68C);
   static const Color _successContainerDark = Color(0xFF0F3A26);
 
+  /// Returns the success color for the current theme.
   static Color success(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
       ? _successDark
       : _successLight;
 
+  /// Returns the success background color for the current theme.
   static Color successContainer(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
       ? _successContainerDark
@@ -43,6 +33,7 @@ class AppTheme {
   static const double radiusLg = 24;
   static const double radiusPill = 999;
 
+  /// Creates the app’s light theme.
   static ThemeData light() {
     final scheme =
         ColorScheme.fromSeed(
@@ -57,6 +48,7 @@ class AppTheme {
     return _base(scheme);
   }
 
+  /// Creates the app’s dark theme.
   static ThemeData dark() {
     final scheme =
         ColorScheme.fromSeed(
@@ -71,6 +63,7 @@ class AppTheme {
     return _base(scheme);
   }
 
+  /// Builds the shared theme for the selected brightness.
   static ThemeData _base(ColorScheme scheme) {
     final baseTextTheme = ThemeData(brightness: scheme.brightness).textTheme;
     final textTheme = GoogleFonts.interTextTheme(baseTextTheme).copyWith(

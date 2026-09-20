@@ -8,13 +8,10 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'reschedule_request_detail_screen.dart';
 
-/// Same list, two roles: admin sees every request (filterable by status)
-/// with Approve/Reject waiting in the detail screen; staff sees only their
-/// own (RLS already scopes the fetch) with Edit/Withdraw instead. See
-/// RescheduleRequest's doc comment for why one provider/model serves both.
 class RescheduleRequestsScreen extends ConsumerStatefulWidget {
   const RescheduleRequestsScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<RescheduleRequestsScreen> createState() =>
       _RescheduleRequestsScreenState();
@@ -24,6 +21,7 @@ class _RescheduleRequestsScreenState
     extends ConsumerState<RescheduleRequestsScreen> {
   RescheduleRequestStatus? _filter = RescheduleRequestStatus.pending;
 
+  /// Builds the reschedule requests screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -132,6 +130,7 @@ class _RescheduleRequestsScreenState
     );
   }
 
+  /// Returns the display label for a request status.
   static String _statusLabel(RescheduleRequestStatus status) {
     switch (status) {
       case RescheduleRequestStatus.pending:
@@ -157,6 +156,7 @@ class _RequestCard extends StatelessWidget {
   final bool showRequester;
   final VoidCallback onTap;
 
+  /// Returns the display color for the selected status.
   static Color _statusColor(BuildContext context, RescheduleRequestStatus s) {
     final scheme = Theme.of(context).colorScheme;
     switch (s) {
@@ -171,6 +171,7 @@ class _RequestCard extends StatelessWidget {
     }
   }
 
+  /// Describes the requested timetable change.
   String _changeSummary() {
     if (request.exceptionType == 'cancel') {
       return 'Cancel ${_fmtDate(request.originalDate)}';
@@ -182,13 +183,16 @@ class _RequestCard extends StatelessWidget {
         '${_fmtTime(newStart)}';
   }
 
+  /// Formats a date for display.
   static String _fmtDate(DateTime d) => '${d.day}/${d.month}';
+  /// Formats a time for display.
   static String _fmtTime(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Builds the request card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

@@ -22,6 +22,7 @@ import 'staff_user_search_screen.dart';
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
@@ -35,12 +36,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     'Directory',
   ];
 
+  /// Builds the home shell interface.
   @override
   Widget build(BuildContext context) {
-    // Fire-and-forget: registers this device's FCM token once per
-    // signed-in user. No loading/error UI needed for a background setup
-    // step — a failed permission grant or token fetch just means no push
-    // for this device, not a broken screen.
     ref.watch(pushNotificationSetupProvider);
 
     final scheme = Theme.of(context).colorScheme;
@@ -191,6 +189,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     );
   }
 
+  /// Builds the floating action button for the active tab.
   Widget? _buildFab({
     required BuildContext context,
     required int safeIndex,

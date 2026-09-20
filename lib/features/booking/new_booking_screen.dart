@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'providers.dart';
 
-// 30-minute interval time slots from 08:00 AM to 09:00 PM, same list
-// tarumt_app's booking_screen.dart used.
 const _timeSlots = [
   '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM',
   '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
@@ -16,21 +14,12 @@ const _timeSlots = [
   '08:00 PM', '08:30 PM', '09:00 PM',
 ];
 
-/// Ported from tarumt_app's NewBookingScreen — same fields, same layout,
-/// same colors. Two departures from the original, both deliberate:
-///   - the signed-in user books instead of the hardcoded demo student
-///     ('24WMR07987') — enforced server-side via auth.uid() in
-///     create_booking, invisible on this screen either way.
-///   - "Number of Pax" is now actually saved (the original captured it on
-///     screen but its _submitBooking() never sent it to Supabase — a bug
-///     in the old app). "Venue Type" stays on screen exactly as before but
-///     still isn't sent anywhere, matching the original exactly, since
-///     it duplicates a fixed property of the facility already chosen.
 class NewBookingScreen extends ConsumerStatefulWidget {
   const NewBookingScreen({super.key, required this.facility});
 
   final BookableFacility facility;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<NewBookingScreen> createState() => _NewBookingScreenState();
 }
@@ -46,6 +35,7 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
   String selectedVenueType = 'Discussion Room (1 PC)';
   final _paxController = TextEditingController(text: '1');
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -55,12 +45,14 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
         : today;
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _paxController.dispose();
     super.dispose();
   }
 
+  /// Opens the booking date picker.
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -75,6 +67,7 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
     }
   }
 
+  /// Validates the booking form and submits the reservation.
   Future<void> _submitBooking() async {
     setState(() => _isLoading = true);
     try {
@@ -112,6 +105,7 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
     }
   }
 
+  /// Builds the new booking screen interface.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -302,6 +296,7 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
     );
   }
 
+  /// Builds a dropdown for selecting a booking time.
   Widget _buildTimeDropdown({
     required String? value,
     required List<String> items,
@@ -330,6 +325,7 @@ class _NewBookingScreenState extends ConsumerState<NewBookingScreen> {
     );
   }
 
+  /// Builds a form field label.
   Widget _buildLabel(String text) {
     return Text(
       text,

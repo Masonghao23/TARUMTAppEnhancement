@@ -5,13 +5,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models.dart';
 
-/// Zoomable/pannable single-floor layout (pinch-zoom, drag to pan, like a
-/// map) — grid positions come from parking_slots.pos_x/pos_y, laid out as
-/// touching, line-marked bays (no gap within a row) inside a single building
-/// outline traced from wherever the slots actually are, rather than a fixed
-/// floor shape. Swap the slot positions in the DB for a different real
-/// floor plan and the outline follows automatically. Opens zoomed out to
-/// show the whole map, centered.
 class ParkingFloorMap extends StatefulWidget {
   const ParkingFloorMap({
     super.key,
@@ -25,23 +18,20 @@ class ParkingFloorMap extends StatefulWidget {
   final String? selectedSlotId;
   final ValueChanged<ParkingSlot>? onTapSlot;
 
-  /// Staff "manage slots" mode needs to tap occupied/disabled slots too
-  /// (to re-enable a disabled one, or inspect an occupied one) — normal
-  /// booking mode keeps those blocked from tapping.
   final bool allowTapWhenBlocked;
 
   static const double _cellW = 46;
   static const double _cellH = 78;
-  // Aisle gap between rows — slots within a row touch (no horizontal gap),
-  // matching how the real bays are painted; only the drive aisle separates
-  // one row from the next.
   static const double _rowGap = 46;
   static const double _margin = 56;
   static const double _topOffset = 48;
 
+  /// Calculates the horizontal position of a parking slot.
   static double _left(num posX) => _margin + (posX - 1) * _cellW;
+  /// Calculates the vertical position of a parking slot.
   static double _top(num posY) => _topOffset + (posY - 1) * (_cellH + _rowGap);
 
+  /// Creates the mutable state for this widget.
   @override
   State<ParkingFloorMap> createState() => _ParkingFloorMapState();
 }
@@ -50,14 +40,14 @@ class _ParkingFloorMapState extends State<ParkingFloorMap> {
   final _transformController = TransformationController();
   bool _didFitToView = false;
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _transformController.dispose();
     super.dispose();
   }
 
-  /// Scales and centers the map so the whole floor plan is visible on
-  /// first layout, instead of opening zoomed to the top-left corner.
+  /// Scales and centers the floor plan to fit the viewport.
   void _fitToView(Size viewport, double canvasWidth, double canvasHeight) {
     final scale = math.min(
       viewport.width / canvasWidth,
@@ -70,6 +60,7 @@ class _ParkingFloorMapState extends State<ParkingFloorMap> {
       ..scaleByDouble(scale, scale, scale, 1);
   }
 
+  /// Builds the parking floor map interface.
   @override
   Widget build(BuildContext context) {
     if (widget.slots.isEmpty) {
@@ -86,10 +77,6 @@ class _ParkingFloorMapState extends State<ParkingFloorMap> {
 
     final scheme = Theme.of(context).colorScheme;
 
-    // One label per row (pos_y), taken from the leading letter of any slot
-    // number in that row (e.g. "A05" -> "A"), placed just left of the
-    // row's leftmost slot. pos_y is stored as a double but always a whole
-    // number, so it's rounded to use as a row key.
     final rowLabels = <int, String>{};
     final rowLeftmostX = <int, double>{};
     for (final slot in slots) {
@@ -192,12 +179,6 @@ class _ParkingFloorMapState extends State<ParkingFloorMap> {
   }
 }
 
-/// Traces a single building outline around whatever slots are actually
-/// there — a wall that's narrower/tapered near the top-left corner (where
-/// rows have fewer slots) and full width everywhere else, wide enough to
-/// enclose every slot including any set off to the side. Those show up as
-/// open floor space within the same outline, separated from the rest only
-/// by the empty aisle between them — not a walled-off second room.
 class _FloorOutlinePainter extends CustomPainter {
   _FloorOutlinePainter({
     required this.slots,
@@ -211,6 +192,7 @@ class _FloorOutlinePainter extends CustomPainter {
 
   static const double _pad = 22;
 
+  /// Draws the floor outline on the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     if (slots.isEmpty) return;
@@ -230,6 +212,7 @@ class _FloorOutlinePainter extends CustomPainter {
     canvas.drawPath(path, linePaint);
   }
 
+  /// Creates the floor outline around the parking slots.
   Path _outlinePath() {
     final minX = slots.map((s) => s.posX).reduce((a, b) => a < b ? a : b);
     final maxX = slots.map((s) => s.posX).reduce((a, b) => a > b ? a : b);
@@ -247,18 +230,12 @@ class _FloorOutlinePainter extends CustomPainter {
     final top = ParkingFloorMap._top(minY) - _pad;
     final bottom = ParkingFloorMap._top(maxY) + ParkingFloorMap._cellH + _pad;
 
-    // Per-row leftmost column, to trace where the wall tapers inward near
-    // the top — rows that only hold the main block stay narrow; any row
-    // that also reaches a set-off block (e.g. a wing) is covered by the
-    // shared right edge below, so the whole thing reads as one building.
     final rowMinX = <int, double>{};
     for (final s in slots) {
       final key = s.posY.round();
       final current = rowMinX[key];
       if (current == null || s.posX < current) rowMinX[key] = s.posX;
     }
-    // First row (from the top) that reaches the overall left edge — above
-    // it, the wall curves inward; from here down, it's straight.
     var taperEndY = maxY;
     for (var y = minY; y <= maxY; y++) {
       if (rowMinX[y] == minX) {
@@ -293,6 +270,7 @@ class _FloorOutlinePainter extends CustomPainter {
     return path;
   }
 
+  /// Checks whether changed painter inputs require repainting.
   @override
   bool shouldRepaint(covariant _FloorOutlinePainter oldDelegate) =>
       oldDelegate.slots != slots ||
@@ -313,6 +291,7 @@ class _SlotTile extends StatelessWidget {
   final bool allowTapWhenBlocked;
   final VoidCallback? onTap;
 
+  /// Builds the slot tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -335,10 +314,6 @@ class _SlotTile extends StatelessWidget {
       fg = AppTheme.success(context);
     }
 
-    // Sharp-cornered and bordered, like an adjoining painted bay, rather
-    // than a separated rounded icon card — tiles sit flush against each
-    // other within a row, so each tile's own border reads as the shared
-    // line between bays.
     return Material(
       color: bg,
       child: InkWell(
@@ -375,6 +350,7 @@ class _SlotTile extends StatelessWidget {
 class _Legend extends StatelessWidget {
   const _Legend();
 
+  /// Builds the legend interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -400,6 +376,7 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
 
+  /// Builds the legend item interface.
   @override
   Widget build(BuildContext context) {
     return Row(

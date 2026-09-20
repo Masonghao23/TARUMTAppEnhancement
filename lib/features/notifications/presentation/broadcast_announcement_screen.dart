@@ -4,15 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers.dart';
 
-/// Use case 4.2.4 "Broadcast Announcement" (Table 4.12) — staff/admin
-/// compose a title, message and target group, and every matching profile
-/// gets it as a real push + in-app notification (send_broadcast_announcement
-/// routes through notify_user() per recipient, always-allowed — see
-/// notification_schema.sql). There's no opt-out toggle for this category by
-/// design, matching the report.
 class BroadcastAnnouncementScreen extends ConsumerStatefulWidget {
   const BroadcastAnnouncementScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<BroadcastAnnouncementScreen> createState() =>
       _BroadcastAnnouncementScreenState();
@@ -32,6 +27,7 @@ class _BroadcastAnnouncementScreenState
     ('all', 'Everyone', Icons.public_outlined),
   ];
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _titleController.dispose();
@@ -39,6 +35,7 @@ class _BroadcastAnnouncementScreenState
     super.dispose();
   }
 
+  /// Validates and sends the announcement to the selected audience.
   Future<void> _send() async {
     final title = _titleController.text.trim();
     final message = _messageController.text.trim();
@@ -100,9 +97,11 @@ class _BroadcastAnnouncementScreenState
     }
   }
 
+  /// Returns the label for an announcement audience.
   String _targetLabel(String value) =>
       _targets.firstWhere((t) => t.$1 == value).$2;
 
+  /// Builds the broadcast announcement screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -204,6 +203,7 @@ class _TargetChip extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  /// Builds the target chip interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

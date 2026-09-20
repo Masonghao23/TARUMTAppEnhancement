@@ -12,6 +12,7 @@ import 'timetable_screen.dart';
 class StudentAttendanceScreen extends ConsumerWidget {
   const StudentAttendanceScreen({super.key});
 
+  /// Builds the student attendance screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -144,6 +145,7 @@ class _NavLinkRow extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  /// Builds the nav link row interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -174,9 +176,7 @@ class _NavLinkRow extends StatelessWidget {
   }
 }
 
-/// Icon/colour for a status string — status can now be a lecturer's manual
-/// override ('absent'/'leave'), not just a real scan, so [_HistoryTile] must
-/// reflect it honestly rather than assuming every record means "checked in".
+/// Returns the icon for an attendance status.
 IconData _historyStatusIcon(AttendanceStatus status) {
   switch (status) {
     case AttendanceStatus.present:
@@ -192,6 +192,7 @@ IconData _historyStatusIcon(AttendanceStatus status) {
   }
 }
 
+/// Returns the color for an attendance history status.
 Color _historyStatusColor(BuildContext context, AttendanceStatus status) {
   final scheme = Theme.of(context).colorScheme;
   switch (status) {
@@ -213,6 +214,7 @@ class _HistoryTile extends StatelessWidget {
 
   final AttendanceHistoryEntry entry;
 
+  /// Builds the history tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

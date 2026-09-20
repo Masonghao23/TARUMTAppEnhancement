@@ -15,6 +15,7 @@ class LiveSessionScreen extends ConsumerStatefulWidget {
 
   final ClassSession session;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<LiveSessionScreen> createState() => _LiveSessionScreenState();
 }
@@ -26,6 +27,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   String? _seedError;
   final Map<String, String> _names = {};
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -35,12 +37,14 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     });
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _tickTimer?.cancel();
     super.dispose();
   }
 
+  /// Loads the session seed used to generate attendance QR codes.
   Future<void> _loadSeed() async {
     try {
       final seed = await ref
@@ -52,6 +56,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     }
   }
 
+  /// Loads student names for the live attendance list.
   Future<void> _resolveNames(List<AttendanceRecord> records) async {
     final missing = records
         .map((r) => r.studentId)
@@ -65,6 +70,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     if (mounted) setState(() => _names.addAll(resolved));
   }
 
+  /// Ends the current class session and refreshes its data.
   Future<void> _endSession() async {
     setState(() => _ending = true);
     try {
@@ -85,6 +91,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     }
   }
 
+  /// Formats a time for display.
   String _formatTime(DateTime dt) {
     final local = dt.toLocal();
     final hour = local.hour.toString().padLeft(2, '0');
@@ -92,6 +99,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     return '$hour:$minute';
   }
 
+  /// Builds the live session screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -306,6 +314,7 @@ class _CountBadge extends StatelessWidget {
 
   final int count;
 
+  /// Builds the count badge interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

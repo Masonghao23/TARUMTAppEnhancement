@@ -11,6 +11,7 @@ import 'device_binding_section.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  /// Builds the profile screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(currentProfileProvider);
@@ -34,6 +35,7 @@ class _ProfileBody extends StatelessWidget {
 
   final Profile profile;
 
+  /// Returns the display color for a user role.
   Color _roleColor(ColorScheme scheme) {
     switch (profile.role) {
       case UserRole.admin:
@@ -45,6 +47,7 @@ class _ProfileBody extends StatelessWidget {
     }
   }
 
+  /// Builds the profile body interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -102,15 +105,13 @@ class _ProfileBody extends StatelessWidget {
   }
 }
 
-/// The profile header styled like a physical campus ID card — accent edge,
-/// small crest mark, role chip, and a decorative barcode strip. Purely
-/// visual: the barcode encodes nothing and isn't scannable.
 class _IdCard extends StatelessWidget {
   const _IdCard({required this.profile, required this.roleColor});
 
   final Profile profile;
   final Color roleColor;
 
+  /// Builds the id card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -214,10 +215,10 @@ class _BarcodePainter extends CustomPainter {
 
   final Color color;
 
+  /// Draws the barcode on the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color.withValues(alpha: 0.5);
-    // A fixed, arbitrary pattern of bar widths/heights — decorative only.
     const weights = [
       1.0,
       0.5,
@@ -255,6 +256,7 @@ class _BarcodePainter extends CustomPainter {
     }
   }
 
+  /// Checks whether changed painter inputs require repainting.
   @override
   bool shouldRepaint(covariant _BarcodePainter oldDelegate) =>
       oldDelegate.color != color;
@@ -271,6 +273,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
+  /// Builds the info row interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

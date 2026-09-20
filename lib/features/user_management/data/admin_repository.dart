@@ -11,9 +11,7 @@ class AdminRepository {
 
   final SupabaseClient _client;
 
-  /// Only succeeds when the current session belongs to an admin — enforced
-  /// server-side by the `admin-create-user` edge function, which is the only
-  /// place the Supabase service role key is used.
+  /// Creates a user account through the admin endpoint.
   Future<String> createUser({
     required String email,
     required String password,

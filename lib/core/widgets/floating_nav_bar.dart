@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// One destination in a [FloatingNavBar].
 class FloatingNavItem {
   const FloatingNavItem({
     required this.icon,
@@ -13,10 +12,6 @@ class FloatingNavItem {
   final String label;
 }
 
-/// A bottom nav bar that floats above the screen edge as a rounded pill,
-/// replacing Material's edge-to-edge [NavigationBar] with the same
-/// selection semantics — used as [Scaffold.bottomNavigationBar] so it still
-/// reserves its own layout space rather than overlapping page content.
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
     super.key,
@@ -29,6 +24,7 @@ class FloatingNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
+  /// Builds the floating nav bar interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -70,6 +66,7 @@ class _NavButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// Builds the nav button interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

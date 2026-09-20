@@ -1,5 +1,6 @@
 enum UserRole { student, staff, admin }
 
+/// Converts a stored user role to its enum value.
 UserRole userRoleFromString(String value) {
   return UserRole.values.firstWhere(
     (role) => role.name == value,
@@ -17,6 +18,7 @@ class Profile {
     this.rfidUid,
   });
 
+  /// Creates profile data from a database row.
   factory Profile.fromMap(Map<String, dynamic> map) {
     return Profile(
       id: map['id'] as String,
@@ -48,6 +50,7 @@ class UserDevice {
     required this.bindDate,
   });
 
+  /// Creates user device data from a database row.
   factory UserDevice.fromMap(Map<String, dynamic> map) {
     return UserDevice(
       deviceId: map['device_id'] as String,
@@ -68,6 +71,7 @@ class UserDevice {
   final DeviceStatus status;
   final DateTime bindDate;
 
+  /// Returns the time remaining before another device can be bound.
   Duration get cooldownRemaining {
     final unlockAt = bindDate.add(const Duration(days: 7));
     final remaining = unlockAt.difference(DateTime.now());

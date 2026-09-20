@@ -10,13 +10,10 @@ import '../providers.dart';
 import 'add_vehicle_dialog.dart';
 import 'parking_floor_map.dart';
 
-/// FR04 — reserve a parking space for a predetermined time range. Payment
-/// is simulated (no real gateway available for this project) — book_slot
-/// always succeeds server-side once availability/ownership checks pass; the
-/// user can still back out before confirming.
 class BookSlotScreen extends ConsumerStatefulWidget {
   const BookSlotScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<BookSlotScreen> createState() => _BookSlotScreenState();
 }
@@ -30,19 +27,15 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
   bool _isBooking = false;
 
   static const _openingHour = 6;
-  // Midnight, expressed as "hour 24" so duration math (_startHour +
-  // hours <= _closingHour) doesn't need day-rollover handling.
   static const _closingHour = 24;
 
   late final DateTime _earliestDate;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
     final today = DateTime.now();
-    // Bookings must be made at least 1 day ahead — today's live dashboard
-    // is view-only, since a same-day arrival just self-parks in whatever's
-    // open rather than reserving a specific slot.
     _earliestDate = DateTime(
       today.year,
       today.month,
@@ -52,20 +45,21 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     _startHour = _openingHour;
   }
 
+  /// Calculates the selected parking reservation’s start time.
   DateTime get _start =>
       DateTime(_date.year, _date.month, _date.day, _startHour);
 
+  /// Calculates the selected parking reservation’s end time.
   DateTime get _end => _start.add(Duration(hours: _durationHours));
 
+  /// Formats an hour as a parking time label.
   String _formatHour(int hour) =>
       TimeOfDay(hour: hour, minute: 0).format(context);
 
-  /// A duration is only valid if it doesn't push the session past midnight
-  /// of its start day — parking operates 6:00 AM to 12:00 AM on the hour,
-  /// so nothing may run later than that (mirrored server-side in
-  /// book_parking_slot/extend_parking_reservation).
+  /// Checks whether the selected duration ends by closing time.
   bool _fitsBeforeMidnight(int hours) => _startHour + hours <= _closingHour;
 
+  /// Opens a date picker and updates the selected date.
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -81,6 +75,7 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     }
   }
 
+  /// Increases the selected parking duration within allowed limits.
   void _incrementDuration() {
     if (!_fitsBeforeMidnight(_durationHours + 1)) return;
     setState(() {
@@ -89,6 +84,7 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     });
   }
 
+  /// Decreases the selected parking duration within allowed limits.
   void _decrementDuration() {
     if (_durationHours <= 1) return;
     setState(() {
@@ -97,6 +93,7 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     });
   }
 
+  /// Validates and confirms the selected parking reservation.
   Future<void> _confirm() async {
     final slotId = _selectedSlotId;
     final plate = _selectedPlate;
@@ -118,18 +115,10 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
 
     setState(() => _isBooking = true);
     try {
-      // The "Process Payment" step is simulated — briefly shown so the flow
-      // still reads as a real payment step, then always succeeds. Not
-      // awaited: showDialog's Future only completes once popped, and the
-      // pop below is what closes it — awaiting here would deadlock.
       unawaited(
         showDialog<void>(
           context: context,
           barrierDismissible: false,
-          // barrierDismissible only blocks tap-outside — without this, the
-          // back button/gesture could still pop the dialog early, and the
-          // pop() below would then close BookSlotScreen itself instead
-          // while the booking RPC kept running unseen in the background.
           builder: (_) => const PopScope(
             canPop: false,
             child: AlertDialog(
@@ -162,10 +151,6 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
       ref.invalidate(myParkingReservationsProvider);
 
       if (!mounted) return;
-      // Bookings are always for a future day, so this isn't an active
-      // session yet — just confirm and return to the dashboard. The
-      // dashboard's active-session banner picks it up once that day
-      // actually arrives.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -180,12 +165,14 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     }
   }
 
+  /// Displays a feedback message to the user.
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Returns the selected parking slot’s display number.
   String? _selectedSlotNumber(List<ParkingSlot>? slots) {
     if (_selectedSlotId == null || slots == null) return null;
     for (final slot in slots) {
@@ -194,6 +181,7 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
     return null;
   }
 
+  /// Builds the book slot screen interface.
   @override
   Widget build(BuildContext context) {
     final vehiclesAsync = ref.watch(myVehiclesProvider);
@@ -375,11 +363,6 @@ class _BookSlotScreenState extends ConsumerState<BookSlotScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              // Takes whatever space is left after the header above, so
-              // the whole screen fits without scrolling — the map opens
-              // zoomed out to show itself in full regardless of how much
-              // room that ends up being, rather than needing a fixed
-              // height tuned to one screen size.
               Expanded(
                 child: availabilityAsync.when(
                   data: (slots) => ParkingFloorMap(
@@ -428,6 +411,7 @@ class _SummaryBar extends StatelessWidget {
   final bool busy;
   final VoidCallback? onConfirm;
 
+  /// Builds the summary bar interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

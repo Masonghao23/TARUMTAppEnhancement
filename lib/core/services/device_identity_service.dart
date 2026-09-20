@@ -15,6 +15,7 @@ class DeviceIdentity {
 class DeviceIdentityService {
   static const _fallbackIdKey = 'device_identity_fallback_id';
 
+  /// Returns the current device’s identifier and platform details.
   Future<DeviceIdentity> getDeviceIdentity() async {
     final plugin = DeviceInfoPlugin();
 
@@ -38,6 +39,7 @@ class DeviceIdentityService {
     return DeviceIdentity(identifier: identifier, model: 'This device');
   }
 
+  /// Returns a persistent fallback identifier for the device.
   Future<String> _fallbackId() async {
     final prefs = await SharedPreferences.getInstance();
     final existing = prefs.getString(_fallbackIdKey);

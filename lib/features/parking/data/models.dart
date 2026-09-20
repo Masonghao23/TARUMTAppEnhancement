@@ -8,6 +8,7 @@ class ParkingSlot {
     required this.isOccupied,
   });
 
+  /// Creates parking slot data from a database row.
   factory ParkingSlot.fromMap(Map<String, dynamic> map) {
     return ParkingSlot(
       id: map['id'] as String,
@@ -34,6 +35,7 @@ class RegisteredVehicle {
     this.vehicleModel,
   });
 
+  /// Creates registered vehicle data from a database row.
   factory RegisteredVehicle.fromMap(Map<String, dynamic> map) {
     return RegisteredVehicle(
       plateNum: map['plate_num'] as String,
@@ -46,6 +48,7 @@ class RegisteredVehicle {
   final String userId;
   final String? vehicleModel;
 
+  /// Returns the display label for this value.
   String get label => vehicleModel == null || vehicleModel!.isEmpty
       ? plateNum
       : '$plateNum — $vehicleModel';
@@ -53,6 +56,7 @@ class RegisteredVehicle {
 
 enum ParkingReservationStatus { reserved, completed, cancelled }
 
+/// Converts a stored parking status to its enum value.
 ParkingReservationStatus _statusFromString(String value) {
   switch (value) {
     case 'completed':
@@ -77,16 +81,13 @@ class ParkingReservation {
     this.transactionRef,
   });
 
+  /// Creates parking reservation data from a database row.
   factory ParkingReservation.fromMap(Map<String, dynamic> map) {
     return ParkingReservation(
       id: map['id'] as String,
       slotId: map['slot_id'] as String,
       slotNumber: map['slot_number'] as String? ?? '?',
       plateNum: map['plate_num'] as String? ?? '',
-      // .toLocal() up front so every screen reading .day/.hour or feeding
-      // this into TimeOfDay.fromDateTime() gets the device's local time —
-      // otherwise those read the raw UTC components straight off the
-      // parsed (UTC-offset) string instead of Malaysia local time.
       startTime: DateTime.parse(map['start_time'] as String).toLocal(),
       endTime: DateTime.parse(map['end_time'] as String).toLocal(),
       totalFee: (map['total_fee'] as num?)?.toDouble() ?? 0,
@@ -105,42 +106,29 @@ class ParkingReservation {
   final ParkingReservationStatus status;
   final String? transactionRef;
 
+  /// Returns the time remaining before the reservation ends.
   Duration get remaining {
     final left = endTime.difference(DateTime.now());
     return left.isNegative ? Duration.zero : left;
   }
 
+  /// Checks whether the parking reservation is currently active.
   bool get isActiveNow {
     if (status != ParkingReservationStatus.reserved) return false;
     final now = DateTime.now();
-    // Bookings are always for a future day, so a reservation is only
-    // "active" once that day has actually arrived — not merely because it
-    // hasn't ended yet (a reservation starting tomorrow would otherwise
-    // read as active today). Deliberately NOT also requiring
-    // now.isBefore(endTime): a reservation that's run past its scheduled
-    // end without ever being Finished (an overstay) must still show up
-    // here rather than disappearing into a gap between this and
-    // [isUpcoming] — that's exactly the state ActiveSessionScreen already
-    // handles gracefully ("Time's up" + a working Finish button), and the
-    // one place the student can actually clear it to free up their
-    // one-reservation cap slot.
     return !now.isBefore(startTime);
   }
 
-  /// A reservation that hasn't started yet — still extendable/cancellable,
-  /// just not "active" (no live countdown, nothing to finish early).
+  /// Returns whether the reservation is reserved and has not started.
   bool get isUpcoming =>
       status == ParkingReservationStatus.reserved &&
       DateTime.now().isBefore(startTime);
 }
 
-/// Decoded {success, reason?, ...} jsonb response shared by every parking
-/// RPC (book/extend/finish/cancel/set-reservable) — every rule (overlap,
-/// ownership, staff-only) is enforced server-side, so the client only ever
-/// renders whatever comes back here.
 class ParkingActionResult {
   const ParkingActionResult({required this.success, this.reason, this.data});
 
+  /// Creates parking action result data from a database row.
   factory ParkingActionResult.fromMap(Map<String, dynamic> map) {
     return ParkingActionResult(
       success: map['success'] as bool? ?? false,

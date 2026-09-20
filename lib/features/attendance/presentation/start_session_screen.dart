@@ -7,12 +7,10 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'live_session_screen.dart';
 
-/// Stage 2 of the Timetable feature — "starting a session" now means
-/// starting one of today's real timetable slots, never a freehand
-/// course+room pick. Replaces the old CreateSessionScreen entirely.
 class StartSessionScreen extends ConsumerWidget {
   const StartSessionScreen({super.key});
 
+  /// Builds the start session screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
@@ -77,6 +75,7 @@ class _SlotTile extends ConsumerStatefulWidget {
   final LecturerSlot slot;
   final DateTime occurrenceDate;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<_SlotTile> createState() => _SlotTileState();
 }
@@ -84,8 +83,10 @@ class _SlotTile extends ConsumerStatefulWidget {
 class _SlotTileState extends ConsumerState<_SlotTile> {
   bool _busy = false;
 
+  /// Returns whether the scheduled slot has ended.
   bool get _ended => widget.slot.sessionStatus == 'ended';
 
+  /// Starts or opens the scheduled class session.
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
@@ -126,6 +127,7 @@ class _SlotTileState extends ConsumerState<_SlotTile> {
     }
   }
 
+  /// Builds the slot tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -211,6 +213,7 @@ class _SlotTileState extends ConsumerState<_SlotTile> {
     );
   }
 
+  /// Formats a time for the timetable display.
   String _fmt(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;

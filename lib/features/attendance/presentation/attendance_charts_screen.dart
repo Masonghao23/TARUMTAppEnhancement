@@ -7,17 +7,10 @@ import '../../../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// Staff-facing attendance analytics for one course at a time: how its
-/// attendance has moved session by session, and how many of its students
-/// are currently meeting the 80% requirement. Every figure is scoped
-/// server-side to the courses the caller teaches (admin sees all).
-///
-/// One course filter at the top scopes both charts, so they always show
-/// the same slice. Status colour (green = meeting 80%, red = below) is
-/// always paired with a count and a label, never carried by colour alone.
 class AttendanceChartsScreen extends ConsumerStatefulWidget {
   const AttendanceChartsScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<AttendanceChartsScreen> createState() =>
       _AttendanceChartsScreenState();
@@ -27,6 +20,7 @@ class _AttendanceChartsScreenState
     extends ConsumerState<AttendanceChartsScreen> {
   String? _courseId;
 
+  /// Reloads the data displayed on this screen.
   Future<void> _refresh() async {
     ref.invalidate(courseAttendanceSummaryProvider);
     final id = _courseId;
@@ -36,6 +30,7 @@ class _AttendanceChartsScreenState
     }
   }
 
+  /// Builds the attendance charts screen interface.
   @override
   Widget build(BuildContext context) {
     final summaryAsync = ref.watch(courseAttendanceSummaryProvider);
@@ -57,8 +52,6 @@ class _AttendanceChartsScreenState
                       'you have classes on your timetable.',
                 );
               }
-              // A course that disappeared (reassignment) would otherwise
-              // leave both charts querying an id that's no longer visible.
               if (_courseId == null ||
                   !courses.any((c) => c.courseId == _courseId)) {
                 _courseId = courses.first.courseId;
@@ -107,13 +100,13 @@ class _AttendanceChartsScreenState
   }
 }
 
-// ---------------------------------------------------------------- KPI row
 
 class _KpiRow extends StatelessWidget {
   const _KpiRow({required this.courses});
 
   final List<CourseAttendanceSummary> courses;
 
+  /// Builds the kpi row interface.
   @override
   Widget build(BuildContext context) {
     var attended = 0.0;
@@ -156,6 +149,7 @@ class _StatTile extends StatelessWidget {
   final String label;
   final bool emphasis;
 
+  /// Builds the stat tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -182,37 +176,34 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------- trend
 
 class _TrendSection extends ConsumerStatefulWidget {
   const _TrendSection({required this.courseId});
 
   final String courseId;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<_TrendSection> createState() => _TrendSectionState();
 }
 
 class _TrendSectionState extends ConsumerState<_TrendSection> {
-  // Tracked by session id rather than list position: a refresh can add or
-  // reorder sessions, and a stored index would then silently point the
-  // open tooltip at a different class's numbers.
   String? _selectedSessionId;
 
+  /// Updates local state when the widget configuration changes.
   @override
   void didUpdateWidget(_TrendSection old) {
     super.didUpdateWidget(old);
-    // Switching course invalidates whichever point was open.
     if (old.courseId != widget.courseId) _selectedSessionId = null;
   }
 
+  /// Selects the chart point nearest the tapped position.
   void _handleTap(Offset position, Size size, List<AttendanceTrendPoint> pts) {
     final coords = _TrendPainter.pointOffsets(size, pts);
     int? nearest;
     var bestDistance = double.infinity;
     for (final entry in coords.entries) {
       final d = (entry.value - position).distance;
-      // Hit target is deliberately far bigger than the 8px dot.
       if (d < 28 && d < bestDistance) {
         bestDistance = d;
         nearest = entry.key;
@@ -220,11 +211,11 @@ class _TrendSectionState extends ConsumerState<_TrendSection> {
     }
     final tappedId = nearest == null ? null : pts[nearest].sessionId;
     setState(() {
-      // Tapping the open point (or empty space) closes the box.
       _selectedSessionId = tappedId == _selectedSessionId ? null : tappedId;
     });
   }
 
+  /// Builds the trend section interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -261,8 +252,6 @@ class _TrendSectionState extends ConsumerState<_TrendSection> {
               ),
             );
           }
-          // Resolve the open session back to its current position; if a
-          // refresh removed it, the tooltip simply closes.
           final found = _selectedSessionId == null
               ? -1
               : points.indexWhere((p) => p.sessionId == _selectedSessionId);
@@ -349,12 +338,9 @@ class _TrendPainter extends CustomPainter {
   static const _leftPad = 34.0;
   static const _rightPad = 12.0;
   static const _topPad = 14.0;
-  // Reserved for the x-axis band so date labels are never clipped.
   static const _bottomPad = 26.0;
 
-  /// Plotted position of every point that has a value, keyed by its index
-  /// in [points]. Shared with the widget so tap hit-testing and painting
-  /// can never drift apart.
+  /// Calculates chart positions for points that have values.
   static Map<int, Offset> pointOffsets(
     Size size,
     List<AttendanceTrendPoint> points,
@@ -380,6 +366,7 @@ class _TrendPainter extends CustomPainter {
     return result;
   }
 
+  /// Creates a text painter for a chart label.
   void _text(Canvas canvas, String s, Offset at, TextStyle style,
       {TextAlign align = TextAlign.left}) {
     final tp = TextPainter(
@@ -393,6 +380,7 @@ class _TrendPainter extends CustomPainter {
     tp.paint(canvas, Offset(dx, at.dy));
   }
 
+  /// Draws the trend on the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     final plotLeft = _leftPad;
@@ -403,10 +391,10 @@ class _TrendPainter extends CustomPainter {
     final plotWidth = plotRight - plotLeft;
     if (plotWidth <= 0 || plotHeight <= 0) return;
 
+    /// Converts a chart value to its vertical canvas position.
     double yFor(double percent) =>
         plotBottom - (percent.clamp(0, 100) / 100) * plotHeight;
 
-    // Recessive hairline grid at 0 / 50 / 100, solid (never dashed).
     final grid = Paint()
       ..color = gridColor
       ..strokeWidth = 1;
@@ -417,8 +405,6 @@ class _TrendPainter extends CustomPainter {
           align: TextAlign.right);
     }
 
-    // The 80% requirement — a real threshold, so it gets its own rule in
-    // neutral ink (not a second data hue) plus a label.
     final threshold = Paint()
       ..color = thresholdColor.withValues(alpha: 0.55)
       ..strokeWidth = 1.5;
@@ -431,7 +417,6 @@ class _TrendPainter extends CustomPainter {
     if (offsets.isEmpty) return;
     final coords = offsets.values.toList(growable: false);
 
-    // Soft area under the single series, then the 2px line over it.
     if (coords.length > 1) {
       final area = Path()..moveTo(coords.first.dx, plotBottom);
       for (final c in coords) {
@@ -458,8 +443,6 @@ class _TrendPainter extends CustomPainter {
       canvas.drawPath(path, line);
     }
 
-    // Markers: 8px, each with a 2px surface ring so overlapping points
-    // stay countable. The open one grows so it's obvious which is which.
     for (final entry in offsets.entries) {
       final isSelected = entry.key == selectedIndex;
       canvas.drawCircle(
@@ -474,8 +457,6 @@ class _TrendPainter extends CustomPainter {
       );
     }
 
-    // Direct-label the endpoint — so the latest figure is readable without
-    // tapping anything. Hidden while a tooltip is open over that area.
     final lastIndex = points.lastIndexWhere((p) => p.attendancePercent != null);
     if (lastIndex >= 0 && selectedIndex == null) {
       final last = coords.last;
@@ -494,7 +475,6 @@ class _TrendPainter extends CustomPainter {
       _drawTooltip(canvas, size, offsets[selected]!, points[selected]);
     }
 
-    // X axis: first and last dates only, so labels never collide.
     final first = points.first.sessionDate;
     final last = points.last.sessionDate;
     _text(canvas, '${first.day}/${first.month}',
@@ -506,9 +486,7 @@ class _TrendPainter extends CustomPainter {
     }
   }
 
-  /// The tap-to-reveal box, sitting above its dot. Clamped to the canvas so
-  /// it never runs off the left/right edge, and flipped below the dot if
-  /// there isn't room above.
+  /// Draws a tooltip for the selected chart point within the canvas bounds.
   void _drawTooltip(
     Canvas canvas,
     Size size,
@@ -532,6 +510,7 @@ class _TrendPainter extends CustomPainter {
         ? '—'
         : '${point.attendancePercent!.toStringAsFixed(0)}% attendance';
 
+    /// Creates a text painter for the supplied label.
     TextPainter tp(String s, TextStyle style) => TextPainter(
       text: TextSpan(text: s, style: style),
       textDirection: TextDirection.ltr,
@@ -557,7 +536,6 @@ class _TrendPainter extends CustomPainter {
     );
     canvas.drawRRect(rect, Paint()..color = tooltipColor);
 
-    // Small pointer toward the dot.
     final tail = Path();
     if (above) {
       tail
@@ -579,6 +557,7 @@ class _TrendPainter extends CustomPainter {
     }
   }
 
+  /// Checks whether changed painter inputs require repainting.
   @override
   bool shouldRepaint(covariant _TrendPainter old) =>
       old.points != points ||
@@ -586,19 +565,13 @@ class _TrendPainter extends CustomPainter {
       old.lineColor != lineColor;
 }
 
-// ------------------------------------------------ standing pie + list
 
-/// Pie of how many of this course's students currently meet the 80%
-/// requirement, with an expandable list of every student and their actual
-/// percentage underneath. Green/red is the status encoding the user asked
-/// for — it only appears alongside counts and labels, and the same two
-/// colours repeat as the dot on each student row so the list and the pie
-/// read as one thing.
 class _StandingSection extends ConsumerStatefulWidget {
   const _StandingSection({required this.courseId});
 
   final String courseId;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<_StandingSection> createState() => _StandingSectionState();
 }
@@ -606,6 +579,7 @@ class _StandingSection extends ConsumerStatefulWidget {
 class _StandingSectionState extends ConsumerState<_StandingSection> {
   bool _detailsOpen = false;
 
+  /// Builds the standing section interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -699,9 +673,6 @@ class _StandingSectionState extends ConsumerState<_StandingSection> {
                   ],
                 ),
               ),
-              // Students with no scheduled hours yet belong to neither
-              // slice; say so, or the pie's total silently disagrees with
-              // the head-count in "Student details (N)" below.
               if (students.length > rated) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -712,8 +683,6 @@ class _StandingSectionState extends ConsumerState<_StandingSection> {
                 ),
               ],
               const SizedBox(height: 6),
-              // The detail dropdown: every student with their real figure,
-              // so the pie's two slices are never the only reading of it.
               InkWell(
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 onTap: () => setState(() => _detailsOpen = !_detailsOpen),
@@ -774,6 +743,7 @@ class _PieLegendRow extends StatelessWidget {
   final int count;
   final int total;
 
+  /// Builds the pie legend row interface.
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -793,9 +763,6 @@ class _PieLegendRow extends StatelessWidget {
                 style: textTheme.titleLarge?.copyWith(color: color),
               ),
               Text(label, style: textTheme.bodySmall),
-              // The base is spelled out: students with no scheduled hours
-              // yet sit in neither slice, so "of students" alone would
-              // disagree with the head-count in "Student details (N)".
               Text(
                 '${share.toStringAsFixed(0)}% of $total '
                 '${total == 1 ? 'student' : 'students'}',
@@ -818,6 +785,7 @@ class _StudentStandingRow extends StatelessWidget {
   final CourseStudentAttendance student;
   final Color meetingColor;
 
+  /// Builds the student standing row interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -846,9 +814,6 @@ class _StudentStandingRow extends StatelessWidget {
                 style: textTheme.bodyLarge,
                 overflow: TextOverflow.ellipsis,
               ),
-              // One decimal when the hours aren't whole, so "8.5 of 9 hours"
-              // lines up with the 94.4% beside it instead of rounding to a
-              // pair of integers that imply a different percentage.
               Text(
                 '${student.attendedHours.toStringAsFixed(student.attendedHours % 1 == 0 ? 0 : 1)} of '
                 '${student.totalHours.toStringAsFixed(student.totalHours % 1 == 0 ? 0 : 1)} hours',
@@ -885,6 +850,7 @@ class _PiePainter extends CustomPainter {
   final Color belowColor;
   final Color gapColor;
 
+  /// Draws the pie on the canvas.
   @override
   void paint(Canvas canvas, Size size) {
     final total = meeting + below;
@@ -895,16 +861,10 @@ class _PiePainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    // Start at 12 o'clock so the "meeting" slice reads clockwise from the
-    // top, which is where people expect a pie to begin.
     const start = -math.pi / 2;
     final meetingSweep = (meeting / total) * 2 * math.pi;
     final belowSweep = (below / total) * 2 * math.pi;
 
-    // When one slice is the whole pie it's drawn as a plain circle: an arc
-    // with a full 2π sweep has been unreliable on the Impeller renderer and
-    // can come out blank — exactly the common "everyone passes / everyone
-    // is below 80%" case.
     if (below == 0) {
       canvas.drawCircle(center, radius, Paint()..color = meetingColor);
     } else if (meeting == 0) {
@@ -926,8 +886,6 @@ class _PiePainter extends CustomPainter {
       );
     }
 
-    // A 2px surface gap between the two slices instead of an outline, so
-    // they separate without a border being drawn around the marks.
     if (meeting > 0 && below > 0) {
       final divider = Paint()
         ..color = gapColor
@@ -943,6 +901,7 @@ class _PiePainter extends CustomPainter {
     }
   }
 
+  /// Checks whether changed painter inputs require repainting.
   @override
   bool shouldRepaint(covariant _PiePainter old) =>
       old.meeting != meeting ||
@@ -963,6 +922,7 @@ class _FilterDropdown<T> extends StatelessWidget {
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
 
+  /// Builds the filter dropdown interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -990,7 +950,6 @@ class _FilterDropdown<T> extends StatelessWidget {
   }
 }
 
-// --------------------------------------------------------------- shared
 
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading({required this.title, required this.subtitle});
@@ -998,6 +957,7 @@ class _SectionHeading extends StatelessWidget {
   final String title;
   final String subtitle;
 
+  /// Builds the section heading interface.
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1017,6 +977,7 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
 
+  /// Builds the empty interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -1047,6 +1008,7 @@ class _ErrorState extends StatelessWidget {
 
   final String message;
 
+  /// Builds the error interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

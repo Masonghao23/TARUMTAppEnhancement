@@ -14,9 +14,6 @@ final bookableFacilitiesProvider = FutureProvider.autoDispose<List<BookableFacil
   return ref.read(bookingRepositoryProvider).fetchFacilities();
 });
 
-/// Watched purely to trigger a refetch of myBookingsProvider whenever any
-/// row in bookings changes — same pattern as
-/// parkingReservationsRealtimeProvider.
 final bookingsRealtimeProvider = StreamProvider.autoDispose<void>((ref) {
   final client = ref.watch(supabaseClientProvider);
   return client.from('bookings').stream(primaryKey: ['id']).map((_) {});

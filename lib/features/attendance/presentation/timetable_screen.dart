@@ -6,19 +6,12 @@ import '../../campus_map/campus_map_screen.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// Stage 1 of the Timetable feature — a read-only weekly view, for
-/// students by default. [forLecturer] switches it to the same read-only
-/// view scoped to the signed-in lecturer's own classes across every course
-/// they teach — the counterpart to Manage Timetable (which is course-picked
-/// and edit-capable) for staff who just want to see their week, the same
-/// way students do. Session-linking and the hour-based attendance
-/// calculation that depends on it are later stages; this screen only shows
-/// the schedule itself.
 class TimetableScreen extends ConsumerStatefulWidget {
   const TimetableScreen({super.key, this.forLecturer = false});
 
   final bool forLecturer;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<TimetableScreen> createState() => _TimetableScreenState();
 }
@@ -27,19 +20,19 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
   late DateTime _weekStart;
   late DateTime _selectedDay;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
     final today = DateTime.now();
     final todayDateOnly = DateTime(today.year, today.month, today.day);
-    // DateTime.weekday is already 1=Monday..7=Sunday, matching
-    // class_schedule.day_of_week, so no remapping is needed here.
     _weekStart = todayDateOnly.subtract(
       Duration(days: todayDateOnly.weekday - 1),
     );
     _selectedDay = todayDateOnly;
   }
 
+  /// Changes the timetable’s displayed week.
   void _changeWeek(int deltaWeeks) {
     setState(() {
       _weekStart = _weekStart.add(Duration(days: 7 * deltaWeeks));
@@ -47,14 +40,17 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
     });
   }
 
+  /// Checks whether two dates fall on the same calendar day.
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// Formats the date range of the displayed week.
   String _weekRangeLabel() {
     final end = _weekStart.add(const Duration(days: 4));
     return '${_weekStart.day}/${_weekStart.month} – ${end.day}/${end.month}';
   }
 
+  /// Builds the timetable screen interface.
   @override
   Widget build(BuildContext context) {
     final occurrencesAsync = ref.watch(
@@ -64,8 +60,6 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
     );
     final termInfo = ref.watch(termInfoProvider).value;
 
-    // Null until termInfo loads (near-instant) — nav is briefly uncapped in
-    // that window, which self-corrects on the next frame once it arrives.
     final weekNumber = termInfo == null
         ? null
         : (_weekStart.difference(termInfo.effectiveFrom).inDays ~/ 7) + 1;
@@ -193,6 +187,7 @@ class _DayPill extends StatelessWidget {
 
   static const _labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  /// Builds the day pill interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -238,14 +233,17 @@ class _OccurrenceCard extends StatelessWidget {
 
   final TimetableOccurrence occurrence;
 
+  /// Formats a time for display.
   String _fmtTime(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) => '${d.day}/${d.month}';
 
+  /// Builds the occurrence card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

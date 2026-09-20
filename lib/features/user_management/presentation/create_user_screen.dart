@@ -10,6 +10,7 @@ import '../providers.dart';
 class CreateUserScreen extends ConsumerStatefulWidget {
   const CreateUserScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<CreateUserScreen> createState() => _CreateUserScreenState();
 }
@@ -24,6 +25,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
   bool _isSubmitting = false;
   final Set<String> _selectedCourseIds = {};
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _nameController.dispose();
@@ -33,6 +35,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     super.dispose();
   }
 
+  /// Validates the form and creates the user account.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -69,16 +72,20 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     }
   }
 
+  /// Displays an error message on the screen.
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Returns the required campus ID length for the selected role.
   int get _campusIdLength => _role == 'student' ? 7 : 4;
 
+  /// Returns a campus ID example for the selected role.
   String get _campusIdExample => _role == 'student' ? '2408009' : '1234';
 
+  /// Validates the campus ID against the selected role’s format.
   String? _validateCampusId(String? value) {
     final trimmed = value?.trim() ?? '';
     final pattern = RegExp('^[0-9]{$_campusIdLength}\$');
@@ -90,6 +97,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     return null;
   }
 
+  /// Builds the create user screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -310,6 +318,7 @@ class _SectionLabel extends StatelessWidget {
 
   final String text;
 
+  /// Builds the section label interface.
   @override
   Widget build(BuildContext context) {
     return Text(

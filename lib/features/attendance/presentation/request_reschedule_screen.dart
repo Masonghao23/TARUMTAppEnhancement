@@ -6,11 +6,6 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'schedule_form_widgets.dart';
 
-/// Staff-only reschedule/cancel — submits a pending request for admin to
-/// approve/reject, rather than writing the exception directly (that's what
-/// admin's own RescheduleClassScreen still does — see
-/// TimetableCalendarScreen's role branch). Doubles as the edit screen for
-/// an already-submitted pending request when [existingRequest] is given.
 class RequestRescheduleScreen extends ConsumerStatefulWidget {
   const RequestRescheduleScreen({
     super.key,
@@ -22,15 +17,15 @@ class RequestRescheduleScreen extends ConsumerStatefulWidget {
          'Either existingRequest, or both slot and originalDate, must be given.',
        );
 
-  /// Create mode — a fresh request against this recurring slot's occurrence.
   final ScheduleSlot? slot;
   final DateTime? originalDate;
 
-  /// Edit mode — changing an already-submitted pending request.
   final RescheduleRequest? existingRequest;
 
+  /// Returns whether an existing request is being edited.
   bool get isEdit => existingRequest != null;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<RequestRescheduleScreen> createState() =>
       _RequestRescheduleScreenState();
@@ -58,9 +53,11 @@ class _RequestRescheduleScreenState
     'Sunday',
   ];
 
+  /// Returns the original date of the timetable occurrence.
   DateTime get _originalDate =>
       widget.originalDate ?? widget.existingRequest!.originalDate;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -90,12 +87,14 @@ class _RequestRescheduleScreenState
     }
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _reasonController.dispose();
     super.dispose();
   }
 
+  /// Opens a date picker and updates the selected date.
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -106,6 +105,7 @@ class _RequestRescheduleScreenState
     if (picked != null) setState(() => _newDate = picked);
   }
 
+  /// Opens the start-time picker and updates the selection.
   Future<void> _pickStart() async {
     final picked = await showTimePicker(
       context: context,
@@ -114,6 +114,7 @@ class _RequestRescheduleScreenState
     if (picked != null) setState(() => _newStartTime = picked);
   }
 
+  /// Opens the end-time picker and updates the selection.
   Future<void> _pickEnd() async {
     final picked = await showTimePicker(
       context: context,
@@ -122,6 +123,7 @@ class _RequestRescheduleScreenState
     if (picked != null) setState(() => _newEndTime = picked);
   }
 
+  /// Validates and submits the reschedule request.
   Future<void> _save() async {
     final reason = _reasonController.text.trim();
     if (reason.isEmpty) {
@@ -188,6 +190,7 @@ class _RequestRescheduleScreenState
     }
   }
 
+  /// Withdraws the pending reschedule request.
   Future<void> _withdraw() async {
     setState(() => _withdrawing = true);
     try {
@@ -205,15 +208,18 @@ class _RequestRescheduleScreenState
     }
   }
 
+  /// Formats a time for display.
   String _fmtTime(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) =>
       '${_dayLabels[d.weekday - 1]}, ${d.day}/${d.month}';
 
+  /// Builds the request reschedule screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

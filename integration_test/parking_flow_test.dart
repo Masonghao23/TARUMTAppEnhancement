@@ -7,11 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Pumps in bounded real-time steps until [condition] is true, or gives up
-/// after [maxSteps]. Deliberately NOT pumpAndSettle(): both
-/// ParkingDashboardScreen and ActiveSessionScreen run a Timer.periodic for
-/// live refresh/countdown, which never lets the widget tree "settle" —
-/// pumpAndSettle would hang until its own timeout instead of failing fast.
+/// Pumps the widget tree until the condition is met or the step limit is reached.
 Future<void> _pumpUntil(
   WidgetTester tester,
   bool Function() condition, {
@@ -24,13 +20,7 @@ Future<void> _pumpUntil(
   }
 }
 
-/// Taps a parking slot tile by its label. Waits for the label to actually
-/// appear first, then invokes its InkWell ancestor's onTap directly rather
-/// than a synthetic tap() — coordinate-based taps inside InteractiveViewer
-/// (and generally right after any route transition in this harness)
-/// unreliably land on stale overlay layers instead of the real target, which
-/// silently no-ops rather than throwing, so a later assertion elsewhere ends
-/// up being the only sign anything was wrong.
+/// Waits for a parking slot tile and invokes its tap callback.
 Future<void> _tapSlotTile(
   WidgetTester tester,
   String label, {
@@ -46,6 +36,7 @@ Future<void> _tapSlotTile(
   await tester.pump(const Duration(milliseconds: 300));
 }
 
+/// Defines and runs the tests in this file.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -70,7 +61,6 @@ void main() {
       await _pumpUntil(tester, () => find.text('Parking').evaluate().isNotEmpty);
       expect(tester.takeException(), isNull, reason: 'Login should not throw.');
 
-      // --- Dashboard loads with the floor map, view-only for today -----------
       await tester.tap(find.text('Parking').first);
       await _pumpUntil(
         tester,
@@ -83,11 +73,7 @@ void main() {
       );
       expect(find.textContaining('slots available'), findsOneWidget);
       expect(find.textContaining('view only'), findsOneWidget);
-      // Pinch-zoom/pan is provided by InteractiveViewer — confirm it's
-      // actually wrapping the map (not just present as an inert import).
       expect(find.byType(InteractiveViewer), findsOneWidget);
-      // Today's slots are no longer tappable for booking — only the
-      // "Reserve parking" button leads into a (future-day) booking flow.
       await _pumpUntil(tester, () => find.text('A05').evaluate().isNotEmpty);
       await tester.tap(find.text('A05'), warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 300));
@@ -97,17 +83,6 @@ void main() {
         reason: 'Tapping a slot on today\'s view-only dashboard must not open booking.',
       );
 
-      // --- An already-active reservation (seeded directly in the DB, since
-      // the app can no longer create a same-day booking) shows up as a
-      // banner and opens the live countdown screen. Extend/Finish's RPC
-      // logic and this screen's wiring to them were already verified
-      // exhaustively via direct database RPC calls (overlap prevention,
-      // fee calc, ownership) and confirmed again here at the app level —
-      // navigating back uses the standard AppBar back button rather than
-      // re-driving Extend+Finish through the UI, which in this specific
-      // combination has proven to leave the harness's browser session
-      // (not the app: mounted/success/pop() all reported clean) in a
-      // stuck state unrelated to app correctness.
       await _pumpUntil(
         tester,
         () => find.textContaining('Active session at A05').evaluate().isNotEmpty,
@@ -132,17 +107,6 @@ void main() {
       );
       expect(find.text('Reserve parking'), findsOneWidget);
 
-      // --- Book slot A03 for a future day (1 day, starting tomorrow) ---------
-      // Row A (top of the grid) is used deliberately: BookSlotScreen's taller
-      // header (date/duration/vehicle) leaves less room for the map than the
-      // dashboard does, so a lower row can end up below the fold.
-      //
-      // A synthetic tap() here consistently lands on a stale
-      // AbsorbPointer/IgnorePointer left at this exact screen position by
-      // the just-finished pop transition (reproducible regardless of extra
-      // settle time — not a timing flake), so the button's callback is
-      // invoked directly instead of fighting hit-testing for a widget
-      // that's already proven present and correctly labelled above.
       tester
           .widget<ElevatedButton>(
             find.widgetWithText(ElevatedButton, 'Reserve parking'),
@@ -153,10 +117,6 @@ void main() {
         tester,
         () => find.byType(BookSlotScreen).evaluate().isNotEmpty,
       );
-      // BookSlotScreen is pushed on top of the dashboard, which stays
-      // mounted underneath (same Navigator, IndexedStack keeps tabs alive)
-      // — so anything the two screens share (slot labels, button types)
-      // must be scoped to BookSlotScreen specifically to stay unambiguous.
       final bookingScreen = find.byType(BookSlotScreen);
       expect(
         find.descendant(
@@ -174,11 +134,6 @@ void main() {
       );
       expect(tester.takeException(), isNull);
 
-      // "Add vehicle" is the button shown once the (empty-but-not-erroring)
-      // vehicle list resolves — "Add a vehicle to continue" is a different,
-      // rarer error-fallback string, not what actually renders here.
-      // A timestamp-based plate keeps repeated runs from colliding on
-      // registered_vehicles' plate_num primary key.
       final testPlate = 'TU${DateTime.now().millisecondsSinceEpoch}';
       if (find.text(testPlate).evaluate().isEmpty) {
         await tester.tap(find.widgetWithText(TextButton, 'Add vehicle'));
@@ -197,9 +152,6 @@ void main() {
 
       await _tapSlotTile(tester, 'A03', within: bookingScreen);
 
-      // Same stale-overlay hit-testing issue as the dashboard's "Reserve
-      // parking" button above — invoke the confirm button's callback
-      // directly rather than fighting a synthetic tap for it.
       tester
           .widget<ElevatedButton>(
             find.descendant(
@@ -209,8 +161,6 @@ void main() {
           )
           .onPressed!();
       await tester.pump();
-      // A future booking is not an active session — it should return to
-      // the dashboard, not open the live countdown screen.
       await _pumpUntil(
         tester,
         () => find.byType(BookSlotScreen).evaluate().isEmpty,
@@ -224,7 +174,6 @@ void main() {
       expect(find.text('Reserve parking'), findsOneWidget);
       expect(find.text('Finish'), findsNothing);
 
-      // --- Staff: toggle slot A04 non-reservable, then back ------------------
       await _pumpUntil(
         tester,
         () => find.byTooltip('Manage slots').evaluate().isNotEmpty,

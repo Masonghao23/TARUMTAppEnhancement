@@ -6,10 +6,6 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'schedule_form_widgets.dart';
 
-/// Stage 3 of the Timetable feature — move or cancel one occurrence of a
-/// recurring slot (a "replacement class"), without touching the recurring
-/// pattern itself. [originalDate] is the specific calendar date of the
-/// occurrence being changed.
 class RescheduleClassScreen extends ConsumerStatefulWidget {
   const RescheduleClassScreen({
     super.key,
@@ -25,16 +21,13 @@ class RescheduleClassScreen extends ConsumerStatefulWidget {
   final ScheduleSlot slot;
   final DateTime originalDate;
 
-  /// When this occurrence has already been moved once, its current
-  /// destination — pre-fills the form with where it moved to, so
-  /// rescheduling again edits that instead of starting over from the
-  /// recurring template's usual day/time.
   final DateTime? currentMoveDate;
   final WallClockTime? currentMoveStartTime;
   final WallClockTime? currentMoveEndTime;
   final String? currentMoveRoomId;
   final String? currentMoveRoomName;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<RescheduleClassScreen> createState() =>
       _RescheduleClassScreenState();
@@ -59,6 +52,7 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
     'Sunday',
   ];
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -72,6 +66,7 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
     _newEndTime = TimeOfDay(hour: endSource.hour, minute: endSource.minute);
   }
 
+  /// Opens a date picker and updates the selected date.
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -82,6 +77,7 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
     if (picked != null) setState(() => _newDate = picked);
   }
 
+  /// Opens the start-time picker and updates the selection.
   Future<void> _pickStart() async {
     final picked = await showTimePicker(
       context: context,
@@ -90,6 +86,7 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
     if (picked != null) setState(() => _newStartTime = picked);
   }
 
+  /// Opens the end-time picker and updates the selection.
   Future<void> _pickEnd() async {
     final picked = await showTimePicker(
       context: context,
@@ -98,6 +95,7 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
     if (picked != null) setState(() => _newEndTime = picked);
   }
 
+  /// Validates and applies the timetable change.
   Future<void> _save() async {
     if (_mode == 'move') {
       final room = _newRoom;
@@ -138,24 +136,24 @@ class _RescheduleClassScreenState extends ConsumerState<RescheduleClassScreen> {
         setState(() => _error = result.reason ?? 'Could not save.');
         return;
       }
-      // The pushing screen (TimetableCalendarScreen) refreshes its own
-      // occurrences provider when this route pops, since it's the one
-      // that knows which month/course-filter key is currently showing.
       Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  /// Formats a time for display.
   String _fmtTime(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) =>
       '${_dayLabels[d.weekday - 1]}, ${d.day}/${d.month}';
 
+  /// Builds the reschedule class screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

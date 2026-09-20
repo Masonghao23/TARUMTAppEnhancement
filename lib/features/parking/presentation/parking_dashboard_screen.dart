@@ -16,6 +16,7 @@ import 'parking_floor_map.dart';
 class ParkingDashboardScreen extends ConsumerStatefulWidget {
   const ParkingDashboardScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ParkingDashboardScreen> createState() =>
       _ParkingDashboardScreenState();
@@ -26,34 +27,28 @@ class _ParkingDashboardScreenState
   bool _manageMode = false;
   Timer? _refreshTimer;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
-    // NFR2: parking availability shall update within 5 seconds — realtime
-    // catches other users' bookings instantly, this timer also catches a
-    // reservation naturally expiring (no DB write happens when time simply
-    // passes, so realtime alone wouldn't notice that).
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
       try {
         ref.invalidate(liveParkingSlotsProvider);
         ref.invalidate(myParkingReservationsProvider);
       } catch (_) {
-        // Defensive: the ProviderScope container can be torn down
-        // independently of (and slightly before) this widget's own
-        // disposal during abrupt teardown (most visible in integration
-        // test harnesses) — mounted can still read true in that window.
-        // Nothing to do if this timer tick lands in it.
       }
     });
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _refreshTimer?.cancel();
     super.dispose();
   }
 
+  /// Builds the parking dashboard screen interface.
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider).value;
@@ -171,9 +166,7 @@ class _ParkingDashboardScreenState
     );
   }
 
-  /// Only ever called in manage mode — today's slots are view-only for
-  /// everyone else (bookings must be made >=1 day ahead, via "Reserve
-  /// parking" below, not by tapping a slot on today's live map).
+  /// Opens the slot management dialog for staff.
   Future<void> _onTapSlot(BuildContext context, ParkingSlot slot) async {
     final makeReservable = !slot.isReservable;
     final confirmed = await showDialog<bool>(
@@ -222,6 +215,7 @@ class _AvailabilityPill extends StatelessWidget {
   final int available;
   final int total;
 
+  /// Builds the availability pill interface.
   @override
   Widget build(BuildContext context) {
     final color = AppTheme.success(context);
@@ -259,6 +253,7 @@ class _ActiveSessionBanner extends StatelessWidget {
 
   final ParkingReservation reservation;
 
+  /// Builds the active session banner interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -296,10 +291,9 @@ class _ActiveSessionBanner extends StatelessWidget {
 class _UpcomingReservationBanner extends StatelessWidget {
   const _UpcomingReservationBanner({required this.reservations});
 
-  /// Soonest first — only the soonest is described in the banner text, but
-  /// tapping it opens the full list, not just that one reservation.
   final List<ParkingReservation> reservations;
 
+  /// Builds the upcoming reservation banner interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -344,6 +338,7 @@ class _UpcomingReservationBanner extends StatelessWidget {
 }
 
 extension _FirstWhereOrNull<T> on List<T> {
+  /// Returns the first matching item, or null when none matches.
   T? firstWhereOrNull(bool Function(T) test) {
     for (final item in this) {
       if (test(item)) return item;

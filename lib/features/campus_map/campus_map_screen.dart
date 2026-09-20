@@ -7,15 +7,7 @@ import 'package:geolocator/geolocator.dart';
 
 import 'indoor_floor_plan.dart';
 
-/// Ported from tarumt_app's CampusMapScreen — same hybrid outdoor (MapLibre +
-/// Three.js building model, served from assets/web/index.html via a local
-/// webview server) / indoor (hardcoded Arena floor-plan routing) map.
-/// Indoor coordinates below are fractional (0-1) pixel positions on the
-/// Arena floor-plan PNGs, exactly as in the original — Arena is the only
-/// building with real indoor navigation data, matching tarumt_app's own
-/// scope (never database-driven, never extended to other buildings there).
 
-// --- 1. Define Coordinate Data Structures ---
 class MapLocation {
   final String level;
   final double x;
@@ -23,7 +15,6 @@ class MapLocation {
   MapLocation({required this.level, required this.x, required this.y});
 }
 
-// --- 2. Map Coordinates ---
 final Map<String, MapLocation> arenaLocations = {
   'Auntea Jenny': MapLocation(level: 'G', x: 0.61, y: 0.68),
   'Escalator (G)': MapLocation(level: 'G', x: 0.555, y: 0.68),
@@ -44,11 +35,9 @@ final InAppLocalhostServer localhostServer = InAppLocalhostServer(documentRoot: 
 class CampusMapScreen extends StatefulWidget {
   const CampusMapScreen({super.key, this.initialQuery});
 
-  /// A venue code or building name from the timetable. Outdoor navigation
-  /// starts once the 3D model loads; the indoor navigation button then opens
-  /// the venue's floor plan. Left null for the campus map tile on Home.
   final String? initialQuery;
 
+  /// Creates the mutable state for this widget.
   @override
   State<CampusMapScreen> createState() => _CampusMapScreenState();
 }
@@ -61,6 +50,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
   final TextEditingController _searchController = TextEditingController();
   StreamSubscription<Position>? _positionStream;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -70,8 +60,8 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     _startLocalServer();
   }
 
+  /// Streams the user’s location to the campus map.
   Future<void> _startLiveLocationTracking() async {
-    // 1. Check if GPS hardware is enabled
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (!mounted) return;
@@ -81,7 +71,6 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
       return;
     }
 
-    // 2. Request Permissions
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -93,11 +82,10 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
       const SnackBar(content: Text('Tracking Live Location...'), backgroundColor: Colors.green),
     );
 
-    // 3. Stream real coordinates to the Three.js 3D Map
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.bestForNavigation,
-          distanceFilter: 2 // Updates every 2 meters
+          distanceFilter: 2
       ),
     ).listen((Position position) {
       webViewController?.evaluateJavascript(
@@ -106,6 +94,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     });
   }
 
+  /// Searches the campus map for the entered destination.
   Future<void> _searchCampus({String? query}) async {
     final effectiveQuery = (query ?? _searchController.text).trim();
     final controller = webViewController;
@@ -124,6 +113,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     }
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _positionStream?.cancel();
@@ -132,6 +122,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     super.dispose();
   }
 
+  /// Starts the local server hosting the campus web map.
   Future<void> _startLocalServer() async {
     if (!localhostServer.isRunning()) {
       await localhostServer.start();
@@ -142,6 +133,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     });
   }
 
+  /// Calculates the indoor route for the selected floor.
   List<MapLocation> getFloorRoute(String startKey, String endKey, MapLocation startLoc, MapLocation endLoc) {
     if (startKey == 'Escalator (L2)' && endKey == 'TA 201') {
       return [startLoc, waypoints['L2_Hallway_Corner']!, waypoints['L2_TA201_Corner']!, endLoc];
@@ -155,6 +147,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     return [startLoc, endLoc];
   }
 
+  /// Finds indoor destination details for a venue code.
   String? _resolveIndoorDestination(String? destination) {
     final normalizedDestination = destination?.toUpperCase().replaceAll(RegExp(r'[\s_-]+'), '');
     for (final key in arenaLocations.keys) {
@@ -165,10 +158,9 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     return null;
   }
 
+  /// Opens the indoor floor plan and route controls.
   void _showFloorPlanModal(String buildingName, {String? destination}) {
     String? endLocation = _resolveIndoorDestination(destination);
-    // Indoor navigation opens at the ground-floor entrance.
-    // Users can change the starting point if they are already upstairs.
     String selectedLevel = 'G';
     final escalatorKey = 'Escalator (${selectedLevel == 'G' ? 'G' : 'L$selectedLevel'})';
     String? startLocation = endLocation != null && arenaLocations.containsKey(escalatorKey)
@@ -308,16 +300,6 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // A horizontally-scrolling list gives each item
-                      // unbounded main-axis width to measure its own
-                      // intrinsic size against (true for Row+SingleChild-
-                      // ScrollView and for ListView alike). ElevatedButton's
-                      // own minimum-touch-target sizing (_RenderInputPadding
-                      // in Flutter's button_style_button.dart) throws
-                      // "BoxConstraints forces an infinite width" when asked
-                      // to lay out under that unbounded width on this
-                      // Flutter version. A fixed width per button sidesteps
-                      // the unbounded query entirely.
                       SizedBox(
                         height: 48,
                         child: ListView(
@@ -388,6 +370,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
     );
   }
 
+  /// Builds the campus map screen interface.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -409,10 +392,6 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
               javaScriptEnabled: true,
               transparentBackground: true,
               cacheEnabled: false,
-              // Hybrid Composition (the Android default) conflicted with
-              // Flutter's modal bottom sheet route over this WebView during
-              // debugging; Virtual Display/Texture composition doesn't, and
-              // costs nothing visible for this screen's use case.
               useHybridComposition: false,
             ),
             onWebViewCreated: (controller) {

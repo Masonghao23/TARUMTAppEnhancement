@@ -2,6 +2,7 @@ import 'package:app_enhancement/core/config/supabase_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Defines and runs the tests in this file.
 void main() {
   test(
     'admin can authenticate and read own + directory profiles without RLS recursion',
@@ -23,9 +24,6 @@ void main() {
           .single();
       expect(ownProfile['role'], 'admin');
 
-      // This is the exact query HomeShell/ProfileScreen depend on. It used to
-      // throw PostgrestException 42P17 (infinite recursion detected in
-      // policy for relation "profiles") before the current_user_role() fix.
       final directory = await client.from('profiles').select().order('name').limit(50);
       expect(directory, isA<List>());
 

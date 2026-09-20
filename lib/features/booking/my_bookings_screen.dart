@@ -4,12 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'providers.dart';
 
-/// Ported from tarumt_app's MyBookingsScreen — same Active/Past split logic
-/// (a cancelled/checked-out/no-show booking is always Past; otherwise a
-/// future date is Active, a past date is Past, and today is split by
-/// comparing the current time against the booking's end time), same card
-/// design and status badge colors. No cancel action — the original never
-/// had one.
 class MyBookingsScreen extends ConsumerWidget {
   const MyBookingsScreen({super.key});
 
@@ -17,6 +11,7 @@ class MyBookingsScreen extends ConsumerWidget {
   static const _backgroundColor = Color(0xFFF7F8FC);
   static const _textDark = Color(0xFF1A233B);
 
+  /// Parses a booking time label into a comparable time value.
   static DateTime _parseTimeString(String timeStr, DateTime referenceDate) {
     try {
       final parts = timeStr.trim().split(' ');
@@ -44,9 +39,11 @@ class MyBookingsScreen extends ConsumerWidget {
     }
   }
 
+  /// Formats a date for display.
   static String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
+  /// Builds the my bookings screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bookingsAsync = ref.watch(myBookingsProvider);
@@ -143,6 +140,7 @@ class MyBookingsScreen extends ConsumerWidget {
     );
   }
 
+  /// Builds a booking card from a stored booking.
   Widget _buildBookingCardFromDb(Booking booking, {bool isPast = false}) {
     final roomName = booking.roomName;
     final location = booking.buildingName ?? 'TAR UMT Campus';
@@ -162,6 +160,7 @@ class MyBookingsScreen extends ConsumerWidget {
     );
   }
 
+  /// Builds a heading for a booking section.
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
@@ -169,6 +168,7 @@ class MyBookingsScreen extends ConsumerWidget {
     );
   }
 
+  /// Builds a card displaying booking details.
   Widget _buildBookingCard({
     required String roomName,
     required String location,
@@ -277,6 +277,7 @@ class MyBookingsScreen extends ConsumerWidget {
     );
   }
 
+  /// Builds an icon and text row for booking details.
   Widget _buildIconText({required IconData icon, required Color iconColor, required String text}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,6 +13,7 @@ import '../providers.dart';
 class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
@@ -22,22 +23,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
   bool _busy = false;
-  // Gates _onDetect — a scan captured before this is true still has to sit
-  // and wait for _positionFuture/_identityFuture inside _onDetect, and that
-  // wait (up to a 20-40s cold GPS fix) can by itself burn through the QR's
-  // tolerance window before the check-in ever reaches the server. Blocking
-  // detection until both are already settled moves that wait to before the
-  // token is captured instead of after.
   bool _ready = false;
   late final Future<Position> _positionFuture;
   late final Future<DeviceIdentity> _identityFuture;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
-    // Started as soon as the camera opens, not when a QR is detected — a
-    // cold GPS fix can take 20-40s, and starting it only after the scan
-    // eats into the QR's short validity window for no reason.
     _positionFuture = ref.read(locationServiceProvider).getCurrentPosition();
     _identityFuture = ref
         .read(deviceIdentityServiceProvider)
@@ -45,31 +38,27 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     _awaitReady();
   }
 
-  /// Waits out both futures regardless of outcome — a failure here (e.g.
-  /// location permission denied) still has to unblock scanning, since
-  /// _onDetect already has proper error handling for that; the point of
-  /// this gate is purely to avoid *waiting* after the scan, not to prevent
-  /// scanning when GPS is unavailable.
+  /// Waits for location and device preparation to finish.
   Future<void> _awaitReady() async {
     try {
       await _positionFuture;
     } catch (_) {
-      // Surfaced later by _onDetect when it actually awaits _positionFuture.
     }
     try {
       await _identityFuture;
     } catch (_) {
-      // Surfaced later by _onDetect when it actually awaits _identityFuture.
     }
     if (mounted) setState(() => _ready = true);
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
+  /// Validates the scanned QR payload and submits attendance.
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_busy || !_ready) return;
     final raw = capture.barcodes.firstOrNull?.rawValue;
@@ -120,6 +109,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
+  /// Displays the attendance check-in result.
   Future<void> _showResult({required AttendanceResult result}) async {
     final scheme = Theme.of(context).colorScheme;
     final again = await showModalBottomSheet<bool>(
@@ -144,6 +134,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
+  /// Builds the scan screen interface.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,9 +187,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 ),
               ),
             ),
-          // Always on top and hit-testable, even while busy — previously the
-          // busy overlay above painted over this row and silently ate taps,
-          // leaving no way to back out of a stuck check-in.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -229,6 +217,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 }
 
 extension<T> on List<T> {
+  /// Returns the first item, or null when the collection is empty.
   T? get firstOrNull => isEmpty ? null : first;
 }
 
@@ -237,6 +226,7 @@ class _ResultSheet extends StatelessWidget {
 
   final AttendanceResult result;
 
+  /// Builds the result sheet interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -311,16 +301,20 @@ class _ScannerOverlayShape extends ShapeBorder {
   final double borderRadius;
   final double cutOutSize;
 
+  /// Returns the scanner border’s inset dimensions.
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
+  /// Creates the scanner overlay’s inner boundary.
   @override
   Path getInnerPath(Rect rect, {TextDirection? textDirection}) => Path();
 
+  /// Creates the scanner overlay’s outer boundary.
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
       Path()..addRect(rect);
 
+  /// Draws the scanner overlay shape on the canvas.
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     final center = rect.center;
@@ -347,6 +341,7 @@ class _ScannerOverlayShape extends ShapeBorder {
     );
   }
 
+  /// Creates a scaled copy of the scanner border.
   @override
   ShapeBorder scale(double t) => this;
 }

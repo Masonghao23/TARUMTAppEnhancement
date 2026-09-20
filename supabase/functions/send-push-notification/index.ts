@@ -1,10 +1,3 @@
-// Deno edge function: the only place that actually calls Firebase Cloud
-// Messaging. Internal-only — callable exclusively with a service_role JWT,
-// never by a user's device directly. Every future notification trigger
-// (attendance below 80%, class reminder, parking ending, a broadcast
-// announcement, etc.) is meant to call this rather than talk to FCM
-// itself, so there's exactly one place that knows how to sign a Google
-// OAuth2 JWT and hit the FCM v1 API.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -18,14 +11,7 @@ interface ServiceAccount {
   private_key: string;
 }
 
-// Supabase's own gateway (verify_jwt) already checks this token's signature
-// before this function ever runs, so this only needs to read the payload's
-// role claim — not re-verify authenticity. Comparing against the injected
-// SUPABASE_SERVICE_ROLE_KEY env var directly turned out to be unreliable on
-// a project with both legacy JWT-based and newer secret-key API systems
-// enabled, since it's not guaranteed to equal the legacy key you'd copy
-// from the dashboard; decoding the role claim works regardless of which
-// key system is active.
+// Reads the role claim from an authorization JWT.
 function jwtRole(authHeader: string): string | null {
   const token = authHeader.replace(/^Bearer\s+/i, "");
   const parts = token.split(".");
@@ -39,6 +25,7 @@ function jwtRole(authHeader: string): string | null {
   }
 }
 
+// Sends push notifications for authorized service requests.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -99,10 +86,6 @@ Deno.serve(async (req) => {
 
   const sent = results.filter((r) => r.ok).length;
 
-  // FCM returns 404 (UNREGISTERED) or 400 (INVALID_ARGUMENT) for a token
-  // that no longer exists — app uninstalled, or rotated without the old
-  // one ever being cleaned up. Prune those so this list doesn't grow
-  // stale forever and every future send doesn't keep retrying dead tokens.
   const staleTokens = tokenRows
     .filter((_, i) => !results[i].ok && (results[i].status === 404 || results[i].status === 400))
     .map((row) => row.token as string);
@@ -117,6 +100,7 @@ Deno.serve(async (req) => {
   return jsonResponse({ sent, total: tokenRows.length, prunedStale: staleTokens.length }, 200);
 });
 
+// Obtains a Google OAuth access token for the service account.
 async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
@@ -170,6 +154,7 @@ async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
   return tokenJson.access_token as string;
 }
 
+// Sends a push notification to an FCM device token.
 async function sendToToken(
   accessToken: string,
   projectId: string,
@@ -193,12 +178,14 @@ async function sendToToken(
   return { ok: res.ok, status: res.status };
 }
 
+// Encodes bytes as a URL-safe Base64 string.
 function base64url(bytes: Uint8Array): string {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// Creates a JSON response with CORS headers.
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,

@@ -11,15 +11,12 @@ import 'add_edit_schedule_slot_screen.dart';
 import 'request_reschedule_screen.dart';
 import 'reschedule_class_screen.dart';
 
-/// Second step of the Manage Timetable flow — a month calendar highlighting
-/// days with classes for the courses chosen on ManageTimetableScreen；
-/// tapping a day shows that day's classes below, with edit/reschedule
-/// actions on the ones that support it.
 class TimetableCalendarScreen extends ConsumerStatefulWidget {
   const TimetableCalendarScreen({super.key, required this.courseIdsKey});
 
   final String courseIdsKey;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<TimetableCalendarScreen> createState() =>
       _TimetableCalendarScreenState();
@@ -46,6 +43,7 @@ class _TimetableCalendarScreenState
   ];
   static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -54,6 +52,7 @@ class _TimetableCalendarScreenState
     _selectedDate = DateTime(now.year, now.month, now.day);
   }
 
+  /// Changes the calendar’s displayed month.
   void _changeMonth(int delta) {
     setState(() {
       _month = DateTime(_month.year, _month.month + delta, 1);
@@ -61,6 +60,7 @@ class _TimetableCalendarScreenState
     });
   }
 
+  /// Reloads the data displayed on this screen.
   void _refresh() {
     ref.invalidate(
       lecturerOccurrencesForMonthProvider((
@@ -70,6 +70,7 @@ class _TimetableCalendarScreenState
     );
   }
 
+  /// Opens the form to add a class on the selected day.
   void _addOnDay() {
     final courseIds = widget.courseIdsKey.split(',');
     Navigator.of(context)
@@ -84,6 +85,7 @@ class _TimetableCalendarScreenState
         .then((_) => _refresh());
   }
 
+  /// Opens the form to edit a recurring timetable slot.
   void _edit(ScheduleSlot slot) {
     Navigator.of(context)
         .push(
@@ -94,10 +96,7 @@ class _TimetableCalendarScreenState
         .then((_) => _refresh());
   }
 
-  /// Admin still reschedules instantly (writes the exception directly, as
-  /// before); staff now submits a request for admin to approve — see
-  /// request_class_reschedule's own ownership check, which is exactly the
-  /// same one create_schedule_exception already applies to admin.
+  /// Opens the reschedule form appropriate to the user’s role.
   void _reschedule(TimetableOccurrence occurrence) {
     final isAdmin = ref.read(currentProfileProvider).value?.role == UserRole.admin;
     final slot = ScheduleSlot(
@@ -119,10 +118,6 @@ class _TimetableCalendarScreenState
                 ? RescheduleClassScreen(
                     slot: slot,
                     originalDate: occurrence.occurrenceDate,
-                    // Already moved once — pre-fill with where it
-                    // currently moved to, so re-rescheduling edits that
-                    // instead of starting over from the recurring
-                    // template's usual time.
                     currentMoveDate: occurrence.movedToDate,
                     currentMoveStartTime: occurrence.movedToStartTime,
                     currentMoveEndTime: occurrence.movedToEndTime,
@@ -138,6 +133,7 @@ class _TimetableCalendarScreenState
         .then((_) => _refresh());
   }
 
+  /// Removes the selected timetable exception.
   Future<void> _undo(String exceptionId) async {
     final result = await ref
         .read(attendanceRepositoryProvider)
@@ -152,11 +148,14 @@ class _TimetableCalendarScreenState
     _refresh();
   }
 
+  /// Checks whether two dates fall on the same calendar day.
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
+  /// Builds the timetable calendar screen interface.
   @override
   Widget build(BuildContext context) {
     final occurrencesAsync = ref.watch(
@@ -322,6 +321,7 @@ class _MonthGrid extends StatelessWidget {
   final Set<DateTime> highlightedDates;
   final ValueChanged<DateTime> onSelect;
 
+  /// Builds the month grid interface.
   @override
   Widget build(BuildContext context) {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
@@ -345,6 +345,7 @@ class _MonthGrid extends StatelessWidget {
     );
   }
 
+  /// Builds a calendar day cell with its class occurrences.
   Widget _buildCell(BuildContext context, int cellIndex) {
     final scheme = Theme.of(context).colorScheme;
     final leadingBlanks = DateTime(month.year, month.month, 1).weekday - 1;
@@ -412,14 +413,17 @@ class _OccurrenceManageCard extends StatelessWidget {
   final ValueChanged<TimetableOccurrence> onReschedule;
   final ValueChanged<String> onUndo;
 
+  /// Formats a time for the timetable display.
   String _fmt(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) => '${d.day}/${d.month}';
 
+  /// Builds the occurrence manage card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -439,11 +443,6 @@ class _OccurrenceManageCard extends StatelessWidget {
         typeLabel = 'PRACTICAL';
     }
 
-    // Editing/rescheduling act on the recurring template (schedule_id),
-    // which 'normal', 'moved_away' and 'cancelled' all still have — only
-    // 'moved_in'/'added' have no template behind them (they *are* the
-    // exception). Undo just needs an exception to remove, which is every
-    // status except 'normal'.
     final canManageTemplate = o.scheduleId != null;
     final slot = canManageTemplate
         ? ScheduleSlot(

@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Displays the TARUMT logo from `assets/images/tarumt_logo.png`.
-///
-/// The source artwork is a wide crest + wordmark, so this sizes by [height]
-/// and lets width follow the image's natural aspect ratio. Falls back to a
-/// school icon glyph if the asset is missing so the UI never breaks.
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.height = 32, this.card = false});
 
   final double height;
   final bool card;
 
+  /// Builds the app logo interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

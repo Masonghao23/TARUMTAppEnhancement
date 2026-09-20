@@ -8,6 +8,7 @@ import '../providers.dart';
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ForgotPasswordScreen> createState() =>
       _ForgotPasswordScreenState();
@@ -18,12 +19,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _isSubmitting = false;
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
   }
 
+  /// Validates the email and sends a password reset link.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -48,12 +51,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
   }
 
+  /// Displays an error message on the screen.
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Builds the forgot password screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

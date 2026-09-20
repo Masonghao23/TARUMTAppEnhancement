@@ -11,6 +11,7 @@ import 'features/user_management/presentation/home_shell.dart';
 class TarumtApp extends ConsumerWidget {
   const TarumtApp({super.key});
 
+  /// Builds the tarumt app interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
@@ -26,6 +27,7 @@ class TarumtApp extends ConsumerWidget {
 class _AuthGate extends ConsumerWidget {
   const _AuthGate();
 
+  /// Builds the auth gate interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateChangesProvider);
@@ -33,11 +35,6 @@ class _AuthGate extends ConsumerWidget {
     return authState.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      // A stale/reused/cross-browser reset link fails right here — Supabase
-      // can't exchange it and the stream errors instead of emitting a
-      // state. Recoverable: signing out clears whatever half-formed
-      // session exists and pushes a fresh signedOut event, which flips
-      // this back to the data branch below and lands on LoginScreen.
       error: (error, _) => Scaffold(
         body: Center(
           child: Padding(
@@ -80,11 +77,6 @@ class _AuthGate extends ConsumerWidget {
         if (session == null) {
           return const LoginScreen();
         }
-        // The session Supabase grants right after a reset-link exchange is
-        // this recovery event — route to setting a new password instead of
-        // straight into the app. Submitting there triggers userUpdated,
-        // which replaces this event on the next stream tick and falls
-        // through to HomeShell normally.
         if (state.event == AuthChangeEvent.passwordRecovery) {
           return const ResetPasswordScreen();
         }

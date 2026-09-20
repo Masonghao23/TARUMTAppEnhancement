@@ -23,6 +23,7 @@ import '../providers.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  /// Builds the home screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(currentProfileProvider);
@@ -78,6 +79,7 @@ class _Avatar extends StatelessWidget {
 
   final Profile? profile;
 
+  /// Builds the avatar interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -109,6 +111,7 @@ class _StudentBento extends ConsumerWidget {
 
   final Profile profile;
 
+  /// Builds the student bento interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hoursAsync = ref.watch(overallAttendanceHoursProvider(profile.id));
@@ -259,9 +262,6 @@ class _StudentBento extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // Same red "Check-In Demo" button as tarumt_app's HomePage — kept
-        // visually distinct on purpose (redAccent, not a bento tile), since
-        // that's the original's own styling for this entry point.
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -284,6 +284,7 @@ class _StudentBento extends ConsumerWidget {
     );
   }
 
+  /// Formats a time for display.
   static String _fmtTime(BuildContext context, DateTime dt) =>
       TimeOfDay.fromDateTime(dt).format(context);
 }
@@ -294,6 +295,7 @@ class _StaffBento extends ConsumerWidget {
   final bool isAdmin;
   final Profile profile;
 
+  /// Builds the staff bento interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionsAsync = ref.watch(mySessionsProvider(profile.id));
@@ -451,6 +453,7 @@ class _AttendanceRing extends StatelessWidget {
 
   final double? percent;
 
+  /// Builds the attendance ring interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -466,10 +469,6 @@ class _AttendanceRing extends StatelessWidget {
   }
 }
 
-/// A single bento-grid stat/action card — either an icon or a leading
-/// widget (the attendance ring) on one side and a number + label on the
-/// other. [horizontal] lays the leading element beside the text instead of
-/// above it, matching the "big" tile in the redesign mockup.
 class _BentoTile extends StatelessWidget {
   const _BentoTile({
     this.icon,
@@ -489,6 +488,7 @@ class _BentoTile extends StatelessWidget {
   final bool horizontal;
   final VoidCallback onTap;
 
+  /// Builds the bento tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

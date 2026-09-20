@@ -8,17 +8,10 @@ import 'package:nfc_manager/nfc_manager_ios.dart';
 
 import 'providers.dart';
 
-/// Ported from tarumt_app's DemoCheckInScreen — same scanning UI/flow and
-/// the same 3-way outcome (card not registered / no booking today /
-/// checked in), each with the original's exact message and snackbar color.
-/// The one change is server-side and invisible here: the original ran two
-/// raw, unguarded Supabase calls straight from this screen (any signed-in
-/// client could flip any user's booking status); this app has no bookings
-/// UPDATE policy at all for that reason; the actual student lookup + status
-/// update now happens in process_nfc_checkin (security definer).
 class NfcCheckinScreen extends ConsumerStatefulWidget {
   const NfcCheckinScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<NfcCheckinScreen> createState() => _NfcCheckinScreenState();
 }
@@ -27,6 +20,7 @@ class _NfcCheckinScreenState extends ConsumerState<NfcCheckinScreen> {
   static const _primaryBlue = Color(0xFF1C2CA0);
   bool isScanning = false;
 
+  /// Starts scanning an NFC card for booking check-in.
   Future<void> _startNfcCheckIn() async {
     final availability = await NfcManager.instance.checkAvailability();
     if (availability != NfcAvailability.enabled) {
@@ -90,6 +84,7 @@ class _NfcCheckinScreenState extends ConsumerState<NfcCheckinScreen> {
     );
   }
 
+  /// Submits the scanned card and displays the check-in result.
   Future<void> _processCheckIn(String rfidHex) async {
     showDialog<void>(
       context: context,
@@ -115,6 +110,7 @@ class _NfcCheckinScreenState extends ConsumerState<NfcCheckinScreen> {
     }
   }
 
+  /// Displays a feedback message to the user.
   void _showMessage(String message, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -122,12 +118,14 @@ class _NfcCheckinScreenState extends ConsumerState<NfcCheckinScreen> {
     ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     NfcManager.instance.stopSession();
     super.dispose();
   }
 
+  /// Builds the nfc checkin screen interface.
   @override
   Widget build(BuildContext context) {
     return Scaffold(

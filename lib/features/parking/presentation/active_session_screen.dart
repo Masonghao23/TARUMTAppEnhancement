@@ -7,14 +7,12 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'extend_duration_dialog.dart';
 
-/// FR05 — extend an active parking session; also the mockup's "Finish"
-/// action to end early. Extension payment is simulated the same way
-/// booking is.
 class ActiveSessionScreen extends ConsumerStatefulWidget {
   const ActiveSessionScreen({super.key, required this.reservation});
 
   final ParkingReservation reservation;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ActiveSessionScreen> createState() =>
       _ActiveSessionScreenState();
@@ -25,6 +23,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
   Timer? _ticker;
   bool _busy = false;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -34,21 +33,25 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     });
   }
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _ticker?.cancel();
     super.dispose();
   }
 
+  /// Returns the parking reservation’s total duration.
   Duration get _totalDuration =>
       _reservation.endTime.difference(_reservation.startTime);
 
+  /// Calculates the elapsed fraction of the parking reservation.
   double get _progress {
     final total = _totalDuration.inSeconds;
     if (total <= 0) return 0;
     return (_reservation.remaining.inSeconds / total).clamp(0, 1);
   }
 
+  /// Confirms and ends the active parking reservation.
   Future<void> _finish() async {
     setState(() => _busy = true);
     try {
@@ -68,6 +71,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     }
   }
 
+  /// Prompts for extra hours and extends the parking reservation.
   Future<void> _extend() async {
     final additionalHours = await showExtendHoursDialog(context);
     if (additionalHours == null) return;
@@ -113,12 +117,14 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     }
   }
 
+  /// Displays a feedback message to the user.
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Formats a time for the parking session display.
   String _fmt(Duration d) {
     final h = d.inHours.remainder(24).toString().padLeft(2, '0');
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -132,6 +138,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     return '${m}m ${s}s';
   }
 
+  /// Formats a duration for the reservation countdown.
   String _fmtDuration(Duration d) {
     final hours = d.inHours;
     final minutes = d.inMinutes.remainder(60);
@@ -141,6 +148,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     return '${hours}h ${minutes}m';
   }
 
+  /// Builds the active session screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

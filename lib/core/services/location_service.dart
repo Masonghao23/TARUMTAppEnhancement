@@ -6,6 +6,7 @@ class LocationUnavailableException implements Exception {
 }
 
 class LocationService {
+  /// Checks location access and obtains the current GPS position.
   Future<Position> getCurrentPosition() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw const LocationUnavailableException(

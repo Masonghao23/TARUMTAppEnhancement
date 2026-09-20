@@ -5,12 +5,10 @@ import '../../../core/theme/app_theme.dart';
 import '../providers.dart';
 import 'timetable_calendar_screen.dart';
 
-/// Entry step of the Manage Timetable flow — pick which course(s) to
-/// manage, then continue to a calendar that highlights days with classes
-/// for just those courses (TimetableCalendarScreen).
 class ManageTimetableScreen extends ConsumerStatefulWidget {
   const ManageTimetableScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ManageTimetableScreen> createState() =>
       _ManageTimetableScreenState();
@@ -19,6 +17,7 @@ class ManageTimetableScreen extends ConsumerStatefulWidget {
 class _ManageTimetableScreenState extends ConsumerState<ManageTimetableScreen> {
   final Set<String> _selectedCourseIds = {};
 
+  /// Opens the timetable calendar for the selected courses.
   void _continue() {
     final sortedIds = _selectedCourseIds.toList()..sort();
     Navigator.of(context).push(
@@ -29,6 +28,7 @@ class _ManageTimetableScreenState extends ConsumerState<ManageTimetableScreen> {
     );
   }
 
+  /// Builds the manage timetable screen interface.
   @override
   Widget build(BuildContext context) {
     final coursesAsync = ref.watch(coursesProvider);

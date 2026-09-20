@@ -9,6 +9,7 @@ class ProfileRepository {
 
   final SupabaseClient _client;
 
+  /// Fetches the requested user’s profile.
   Future<Profile> fetchProfile(String userId) async {
     final row = await _client
         .from('profiles')
@@ -18,7 +19,7 @@ class ProfileRepository {
     return Profile.fromMap(row);
   }
 
-  /// FR04: staff can search/filter user accounts by name or campus ID.
+  /// Searches user profiles by name or campus ID.
   Future<List<Profile>> searchProfiles(String keyword) async {
     if (keyword.trim().isEmpty) {
       final rows = await _client
@@ -38,6 +39,7 @@ class ProfileRepository {
     return rows.map(Profile.fromMap).toList();
   }
 
+  /// Fetches the user’s currently bound device.
   Future<UserDevice?> fetchActiveDevice(String userId) async {
     final rows = await _client
         .from('user_devices')
@@ -50,10 +52,7 @@ class ProfileRepository {
     return UserDevice.fromMap(rows.first);
   }
 
-  /// FR09/FR10 + Table 4.2 use case: bind a device to the account, blocking
-  /// a rebind within 7 days and rejecting a device already bound elsewhere
-  /// unless [force] is set (the "Change ID Binding to Current Device" alt
-  /// flow A1).
+  /// Binds the current device to the user’s account.
   Future<void> bindDevice({
     required String userId,
     required DeviceIdentity identity,

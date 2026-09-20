@@ -6,11 +6,6 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'schedule_form_widgets.dart';
 
-/// Stage 3 of the Timetable feature — create or edit one recurring weekly
-/// slot. [existing] null means "add slot"; non-null means "edit slot".
-/// [initialDayOfWeek]/[initialCourseId] only apply when adding (pre-filled
-/// from whichever day/course the Manage Timetable calendar was showing),
-/// and are ignored when [existing] is set.
 class AddEditScheduleSlotScreen extends ConsumerStatefulWidget {
   const AddEditScheduleSlotScreen({
     super.key,
@@ -23,6 +18,7 @@ class AddEditScheduleSlotScreen extends ConsumerStatefulWidget {
   final int? initialDayOfWeek;
   final String? initialCourseId;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<AddEditScheduleSlotScreen> createState() =>
       _AddEditScheduleSlotScreenState();
@@ -49,6 +45,7 @@ class _AddEditScheduleSlotScreenState
     'Sunday',
   ];
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
@@ -69,6 +66,7 @@ class _AddEditScheduleSlotScreenState
     _sessionType = existing?.sessionType ?? SessionSlotType.lecture;
   }
 
+  /// Opens the start-time picker and updates the selection.
   Future<void> _pickStart() async {
     final picked = await showTimePicker(
       context: context,
@@ -77,6 +75,7 @@ class _AddEditScheduleSlotScreenState
     if (picked != null) setState(() => _startTime = picked);
   }
 
+  /// Opens the end-time picker and updates the selection.
   Future<void> _pickEnd() async {
     final picked = await showTimePicker(
       context: context,
@@ -85,6 +84,7 @@ class _AddEditScheduleSlotScreenState
     if (picked != null) setState(() => _endTime = picked);
   }
 
+  /// Validates and saves the recurring timetable slot.
   Future<void> _save() async {
     final course = _course;
     final room = _room;
@@ -120,15 +120,13 @@ class _AddEditScheduleSlotScreenState
         setState(() => _error = result.reason ?? 'Could not save.');
         return;
       }
-      // The pushing screen (TimetableCalendarScreen) refreshes its own
-      // occurrences provider when this route pops, since it's the one
-      // that knows which month/course-filter key is currently showing.
       Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  /// Builds the add edit schedule slot screen interface.
   @override
   Widget build(BuildContext context) {
     final coursesAsync = ref.watch(coursesProvider);
@@ -276,6 +274,7 @@ class _AddEditScheduleSlotScreenState
     );
   }
 
+  /// Finds the item with the requested ID.
   T? _findById<T>(List<T> items, String Function(T) idOf, String? targetId) {
     if (targetId == null) return null;
     for (final item in items) {

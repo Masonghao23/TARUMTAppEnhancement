@@ -15,6 +15,7 @@ import 'timetable_screen.dart';
 class StaffSessionsScreen extends ConsumerWidget {
   const StaffSessionsScreen({super.key});
 
+  /// Builds the staff sessions screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -158,6 +159,7 @@ class _NavLinkRow extends StatelessWidget {
   final VoidCallback onTap;
   final int badgeCount;
 
+  /// Builds the nav link row interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -217,6 +219,7 @@ class _LiveSessionTile extends StatelessWidget {
 
   final ClassSession session;
 
+  /// Builds the live session tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

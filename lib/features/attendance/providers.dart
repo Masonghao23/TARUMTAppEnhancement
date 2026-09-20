@@ -29,9 +29,6 @@ final mySessionsProvider = FutureProvider.autoDispose
           .fetchMySessions(lecturerId);
     });
 
-/// Only this lecturer's currently-active sessions — see
-/// [AttendanceRepository.fetchActiveSessions] for why this is separate from
-/// [mySessionsProvider] rather than filtering it client-side.
 final activeSessionsProvider = FutureProvider.autoDispose
     .family<List<ClassSession>, String>((ref, lecturerId) {
       return ref
@@ -44,8 +41,6 @@ final rosterProvider = StreamProvider.autoDispose
       return ref.watch(attendanceRepositoryProvider).watchRoster(sessionId);
     });
 
-/// Every enrolled student's attendance status for one session, for the
-/// lecturer's "Manage attendance" screen — see [RosterEntry].
 final sessionRosterProvider = FutureProvider.autoDispose
     .family<List<RosterEntry>, String>((ref, sessionId) {
       return ref
@@ -78,9 +73,6 @@ final courseAttendanceHoursProvider = FutureProvider.autoDispose
           );
     });
 
-/// Hour totals summed across every course the student is enrolled in — null
-/// when they aren't enrolled in any, so callers can hide the stat rather
-/// than show a fake 0/0.
 final overallAttendanceHoursProvider = FutureProvider.autoDispose
     .family<CourseAttendanceHours?, String>((ref, studentId) async {
       final courses = await ref.watch(
@@ -103,8 +95,6 @@ final overallAttendanceHoursProvider = FutureProvider.autoDispose
       return CourseAttendanceHours(attendedHours: attended, totalHours: total);
     });
 
-/// A lecturer's own startable timetable slots for one date — used by the
-/// "Start session" screen; [date] must have no time component.
 final lecturerScheduleForDateProvider = FutureProvider.autoDispose
     .family<List<LecturerSlot>, DateTime>((ref, date) {
       final lecturerId = ref.watch(currentUserIdProvider);
@@ -114,10 +104,6 @@ final lecturerScheduleForDateProvider = FutureProvider.autoDispose
           .fetchLecturerScheduleForDate(lecturerId: lecturerId, date: date);
     });
 
-/// This week's schedule (Mon-Sun) for the signed-in student, with any
-/// moves/cancellations already applied server-side. [weekStart] must be a
-/// local calendar Monday with no time component, so repeated calls for the
-/// same week hit the same cache entry.
 final myTimetableWeekProvider = FutureProvider.autoDispose
     .family<List<TimetableOccurrence>, DateTime>((ref, weekStart) {
       final studentId = ref.watch(currentUserIdProvider);
@@ -131,10 +117,6 @@ final termInfoProvider = FutureProvider.autoDispose<TermInfo>((ref) {
   return ref.watch(attendanceRepositoryProvider).fetchTermInfo();
 });
 
-/// This week's schedule (Mon-Sun) for the signed-in lecturer, across every
-/// course they teach — the read-only counterpart of myTimetableWeekProvider
-/// for staff, used by the "My Timetable" view (as opposed to Manage
-/// Timetable, which is course-scoped and edit-capable).
 final myLecturerTimetableWeekProvider = FutureProvider.autoDispose
     .family<List<TimetableOccurrence>, DateTime>((ref, weekStart) {
       final lecturerId = ref.watch(currentUserIdProvider);
@@ -149,11 +131,6 @@ final myLecturerTimetableWeekProvider = FutureProvider.autoDispose
           );
     });
 
-/// A lecturer's own occurrences for one calendar month, narrowed to the
-/// courses chosen on the Manage Timetable course-picker step. Keyed by a
-/// sorted, comma-joined course-id string rather than a raw List, since
-/// List equality is by identity — a fresh List with the same ids on every
-/// build would otherwise never hit the cache.
 final lecturerOccurrencesForMonthProvider = FutureProvider.autoDispose
     .family<List<TimetableOccurrence>, ({String courseIdsKey, DateTime month})>(
       (ref, args) {
@@ -177,9 +154,6 @@ final lecturerOccurrencesForMonthProvider = FutureProvider.autoDispose
       },
     );
 
-/// Reschedule requests visible to the current user — RLS decides whether
-/// that's just their own (staff) or every request (admin), so this same
-/// provider backs both "My Requests" and the admin review queue.
 final rescheduleRequestsProvider = FutureProvider.autoDispose<
   List<RescheduleRequest>
 >((ref) {
@@ -196,9 +170,6 @@ final pendingRescheduleRequestCountProvider = Provider.autoDispose<int>((
       .length;
 });
 
-/// Staff Attendance charts. The summary is scoped server-side to the
-/// caller's own courses (admin: all); the two families take whichever
-/// course the screen's filter currently has selected.
 final courseAttendanceSummaryProvider = FutureProvider.autoDispose<
   List<CourseAttendanceSummary>
 >((ref) {

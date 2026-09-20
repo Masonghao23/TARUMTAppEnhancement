@@ -10,6 +10,7 @@ import '../providers.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -22,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSubmitting = false;
   String? _errorMessage;
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _identifierController.dispose();
@@ -29,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  /// Validates credentials and signs the user in.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -44,8 +47,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             identifier: _identifierController.text.trim(),
             password: _passwordController.text,
           );
-      // On success, the auth state stream flips and app.dart's AuthGate
-      // swaps this screen out automatically.
     } on AuthException catch (_) {
       setState(() => _errorMessage = 'Invalid ID or password.');
     } catch (_) {
@@ -55,6 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Builds the login screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -220,6 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  /// Builds a decorative gradient shape for the login background.
   static Widget _meshBlob(Color color, double size) {
     return Container(
       width: size,

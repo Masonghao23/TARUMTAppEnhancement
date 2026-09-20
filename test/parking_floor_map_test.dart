@@ -3,10 +3,7 @@ import 'package:app_enhancement/features/parking/presentation/parking_floor_map.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Mirrors the row layout seeded in supabase/parking_schema.sql (main hall
-/// rows A-G tapering near the curve, wing rows H/J past the corridor gap)
-/// so this test exercises the exact same shape the outline painter has to
-/// trace in production — without needing a live Supabase connection.
+/// Creates parking slots matching the seeded floor layout for testing.
 List<ParkingSlot> _seedLayout() {
   const rows = [
     ('A', 1, 6, 6),
@@ -32,9 +29,6 @@ List<ParkingSlot> _seedLayout() {
           slotNumber: number,
           posX: (xStart + i).toDouble(),
           posY: y.toDouble(),
-          // A mix of statuses, so the painter/tile both exercise every
-          // colour branch (available/occupied/disabled), not just the
-          // default case.
           isReservable: seed % 11 != 0,
           isOccupied: seed % 7 == 0,
         ),
@@ -44,9 +38,11 @@ List<ParkingSlot> _seedLayout() {
   return slots;
 }
 
+/// Wraps the test widget with its required app and provider context.
 Widget _wrap(Widget child) =>
     MaterialApp(home: Scaffold(body: SizedBox(height: 600, child: child)));
 
+/// Defines and runs the tests in this file.
 void main() {
   testWidgets('renders the full 84-slot floor plan without throwing', (
     tester,
@@ -73,8 +69,6 @@ void main() {
     );
     await tester.pump();
 
-    // A01 is reservable and unoccupied by construction (seed 1: 1 % 11 !=
-    // 0, 1 % 7 != 0).
     await tester.tap(find.text('A01'));
     await tester.pump();
 
@@ -86,7 +80,6 @@ void main() {
     tester,
   ) async {
     final slots = _seedLayout();
-    // Seed 7 (G01, the 7th slot generated) is occupied by construction.
     final occupied = slots.firstWhere((s) => s.isOccupied);
     ParkingSlot? tapped;
 

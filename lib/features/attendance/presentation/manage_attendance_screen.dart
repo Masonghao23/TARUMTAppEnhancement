@@ -5,11 +5,6 @@ import '../../../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../providers.dart';
 
-/// Lecturer-facing roster for one class session — lists every enrolled
-/// student with their current attendance status (a real scan, a manual
-/// override, or the server-computed 'absent'/'pending' default) and lets
-/// the lecturer set any student's status by hand. Works for a live session
-/// or one that's already ended.
 class ManageAttendanceScreen extends ConsumerStatefulWidget {
   const ManageAttendanceScreen({
     super.key,
@@ -20,6 +15,7 @@ class ManageAttendanceScreen extends ConsumerStatefulWidget {
   final String sessionId;
   final String? courseName;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<ManageAttendanceScreen> createState() =>
       _ManageAttendanceScreenState();
@@ -36,12 +32,14 @@ class _ManageAttendanceScreenState
   final Set<String> _selectedIds = {};
   bool _bulkBusy = false;
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
+  /// Toggles bulk attendance selection mode.
   void _toggleSelectMode() {
     setState(() {
       _selectMode = !_selectMode;
@@ -49,6 +47,7 @@ class _ManageAttendanceScreenState
     });
   }
 
+  /// Adds or removes a student from the current selection.
   void _toggleSelected(String studentId) {
     setState(() {
       if (_selectedIds.contains(studentId)) {
@@ -59,6 +58,7 @@ class _ManageAttendanceScreenState
     });
   }
 
+  /// Updates one student’s attendance status.
   Future<void> _setStatus(String studentId, AttendanceStatus status) async {
     setState(() => _busyStudentIds.add(studentId));
     try {
@@ -82,6 +82,7 @@ class _ManageAttendanceScreenState
     }
   }
 
+  /// Updates attendance for the selected students.
   Future<void> _bulkSetStatus(AttendanceStatus status) async {
     final ids = _selectedIds.toList();
     if (ids.isEmpty) return;
@@ -120,6 +121,7 @@ class _ManageAttendanceScreenState
     }
   }
 
+  /// Shows the attendance status picker.
   Future<void> _pickStatus(RosterEntry entry) async {
     final picked = await showModalBottomSheet<AttendanceStatus>(
       context: context,
@@ -166,6 +168,7 @@ class _ManageAttendanceScreenState
     }
   }
 
+  /// Returns the icon for the selected status.
   static IconData _statusIcon(AttendanceStatus status) {
     switch (status) {
       case AttendanceStatus.present:
@@ -181,6 +184,7 @@ class _ManageAttendanceScreenState
     }
   }
 
+  /// Returns the display color for the selected status.
   static Color _statusColor(BuildContext context, AttendanceStatus status) {
     final scheme = Theme.of(context).colorScheme;
     switch (status) {
@@ -197,6 +201,7 @@ class _ManageAttendanceScreenState
     }
   }
 
+  /// Builds the manage attendance screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -458,6 +463,7 @@ class _StatusFilterChip extends StatelessWidget {
   final VoidCallback onSelected;
   final Color? color;
 
+  /// Builds the status filter chip interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -501,6 +507,7 @@ class _RosterTile extends StatelessWidget {
   final bool selectMode;
   final bool selected;
 
+  /// Builds the roster tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

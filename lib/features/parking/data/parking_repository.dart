@@ -7,10 +7,7 @@ class ParkingRepository {
 
   final SupabaseClient _client;
 
-  /// Live occupancy for every slot over [start, end) — defaults to "right
-  /// now" for the dashboard, or pass a future date/duration window to check
-  /// availability before booking. Every rule lives in get_parking_slots()
-  /// server-side (see parking_schema.sql), never trusted/recomputed here.
+  /// Fetches parking slot availability for the requested time window.
   Future<List<ParkingSlot>> fetchSlots({DateTime? start, DateTime? end}) async {
     final params = <String, dynamic>{};
     if (start != null) params['p_start'] = start.toUtc().toIso8601String();
@@ -22,6 +19,7 @@ class ParkingRepository {
         .toList();
   }
 
+  /// Creates a parking reservation for the selected slot and time.
   Future<ParkingActionResult> bookSlot({
     required String slotId,
     required String plateNum,
@@ -42,6 +40,7 @@ class ParkingRepository {
     );
   }
 
+  /// Extends the parking reservation by the requested hours.
   Future<ParkingActionResult> extendReservation({
     required String reservationId,
     required int additionalSeconds,
@@ -58,6 +57,7 @@ class ParkingRepository {
     );
   }
 
+  /// Ends the current parking reservation.
   Future<ParkingActionResult> finishReservation(String reservationId) async {
     final response = await _client.rpc(
       'finish_parking_reservation',
@@ -68,6 +68,7 @@ class ParkingRepository {
     );
   }
 
+  /// Cancels an upcoming parking reservation.
   Future<ParkingActionResult> cancelReservation(String reservationId) async {
     final response = await _client.rpc(
       'cancel_parking_reservation',
@@ -78,7 +79,7 @@ class ParkingRepository {
     );
   }
 
-  /// FR08 — staff-only; enforced again server-side regardless of caller.
+  /// Enables or disables reservations for a parking slot.
   Future<ParkingActionResult> setSlotReservable({
     required String slotId,
     required bool isReservable,
@@ -92,6 +93,7 @@ class ParkingRepository {
     );
   }
 
+  /// Fetches the user’s parking reservations.
   Future<List<ParkingReservation>> fetchMyReservations() async {
     final rows = await _client.rpc('get_my_parking_reservations');
     return (rows as List)
@@ -99,6 +101,7 @@ class ParkingRepository {
         .toList();
   }
 
+  /// Fetches the user’s registered vehicles.
   Future<List<RegisteredVehicle>> fetchMyVehicles() async {
     final rows = await _client
         .from('registered_vehicles')
@@ -107,6 +110,7 @@ class ParkingRepository {
     return rows.map(RegisteredVehicle.fromMap).toList();
   }
 
+  /// Registers a vehicle for the current user.
   Future<void> addVehicle({
     required String plateNum,
     String? vehicleModel,
@@ -119,6 +123,7 @@ class ParkingRepository {
     });
   }
 
+  /// Removes a registered vehicle.
   Future<void> removeVehicle(String plateNum) async {
     await _client
         .from('registered_vehicles')
@@ -126,10 +131,7 @@ class ParkingRepository {
         .eq('plate_num', plateNum);
   }
 
-  /// Client-side preview only, for instant fee feedback while the user picks
-  /// a duration — the authoritative fee always comes back from the
-  /// book/extend RPC response, which is what actually gets recorded. Must
-  /// be kept in sync with parking_rate_per_hour() in parking_schema.sql.
+  /// Estimates the parking fee for the selected duration.
   static double previewFee(Duration duration) {
     const ratePerHour = 2.00;
     return double.parse(

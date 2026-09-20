@@ -8,15 +8,12 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'request_reschedule_screen.dart';
 
-/// Full detail for one reschedule request. Which actions show depends on
-/// who's looking: admin gets Approve/Reject on a pending request, the
-/// original requester gets Edit/Withdraw on their own pending request,
-/// and everyone else (or anything already reviewed) just sees the record.
 class RescheduleRequestDetailScreen extends ConsumerStatefulWidget {
   const RescheduleRequestDetailScreen({super.key, required this.request});
 
   final RescheduleRequest request;
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<RescheduleRequestDetailScreen> createState() =>
       _RescheduleRequestDetailScreenState();
@@ -37,15 +34,18 @@ class _RescheduleRequestDetailScreenState
     'Sunday',
   ];
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) =>
       '${_dayLabels[d.weekday - 1]}, ${d.day}/${d.month}/${d.year}';
 
+  /// Formats a time for display.
   String _fmtTime(WallClockTime t) {
     final period = t.hour >= 12 ? 'PM' : 'AM';
     final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Submits the admin’s decision on a reschedule request.
   Future<void> _review(String decision, {String? comment}) async {
     setState(() {
       _busy = true;
@@ -70,23 +70,18 @@ class _RescheduleRequestDetailScreenState
     }
   }
 
+  /// Opens the form to edit the reschedule request.
   Future<void> _editRequest(RescheduleRequest request) async {
-    // RequestRescheduleScreen pops(true) only after an actual save/withdraw
-    // — a plain back-gesture to cancel editing pops with null, same as it
-    // always has. Without checking this, cancelling out of Edit used to
-    // bounce this detail screen closed too, even though nothing changed.
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => RequestRescheduleScreen(existingRequest: request),
       ),
     );
     if (!mounted || changed != true) return;
-    // A real change happened and the edit screen already refreshed the
-    // list — this detail view is now showing stale data for whatever
-    // changed underneath it, so close it too.
     Navigator.of(context).pop();
   }
 
+  /// Prompts for confirmation before rejecting the request.
   Future<void> _confirmReject() async {
     final controller = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -118,6 +113,7 @@ class _RescheduleRequestDetailScreenState
     }
   }
 
+  /// Builds the reschedule request detail screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -229,6 +225,7 @@ class _InfoCard extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
+  /// Builds the info card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

@@ -6,6 +6,7 @@ class BookingRepository {
   BookingRepository(this._client);
   final SupabaseClient _client;
 
+  /// Fetches facilities and their building information.
   Future<List<BookableFacility>> fetchFacilities() async {
     final rows = await _client
         .from('facilities')
@@ -16,6 +17,7 @@ class BookingRepository {
         .toList();
   }
 
+  /// Creates a facility booking through the backend.
   Future<BookingActionResult> createBooking({
     required String facilityId,
     required DateTime bookingDate,
@@ -40,6 +42,7 @@ class BookingRepository {
     return BookingActionResult.fromMap(Map<String, dynamic>.from(response as Map));
   }
 
+  /// Fetches the signed-in user’s facility bookings.
   Future<List<Booking>> fetchMyBookings() async {
     final rows = await _client.rpc('get_my_bookings');
     return (rows as List)
@@ -47,6 +50,7 @@ class BookingRepository {
         .toList();
   }
 
+  /// Checks in a booking using the scanned NFC card.
   Future<BookingActionResult> processNfcCheckin(String rfidUid) async {
     final response = await _client.rpc(
       'process_nfc_checkin',

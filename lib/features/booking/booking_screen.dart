@@ -4,13 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'new_booking_screen.dart';
 import 'providers.dart';
 
-/// Ported from tarumt_app's BookingPage — same 2-tab layout (Facility list /
-/// Booking Guideline), same colors and card styling. Facility names now come
-/// with the room's id attached (needed to call create_booking) and only the
-/// 4 rooms this integration actually migrated for booking are listed
-/// (capacity != null is how the migration marks a "bookable room" facility,
-/// since the shared facilities table also holds every Attendance-geofenced
-/// classroom, which the old app's dedicated table never had to filter out).
 class BookingScreen extends ConsumerWidget {
   const BookingScreen({super.key});
 
@@ -18,6 +11,7 @@ class BookingScreen extends ConsumerWidget {
   static const _backgroundColor = Color(0xFFF7F8FC);
   static const _textDark = Color(0xFF1A233B);
 
+  /// Builds the booking screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
@@ -75,6 +69,7 @@ class _FacilityListTab extends ConsumerWidget {
 
   final WidgetRef ref;
 
+  /// Builds the facility list tab interface.
   @override
   Widget build(BuildContext context, WidgetRef _) {
     final facilitiesAsync = ref.watch(bookableFacilitiesProvider);
@@ -89,11 +84,6 @@ class _FacilityListTab extends ConsumerWidget {
         ),
       ),
       data: (facilities) {
-        // capacity is only ever set on the rooms this integration migrated
-        // for booking (see booking_migration_schema.sql) — every other row
-        // in the shared facilities table is an Attendance-geofenced
-        // classroom, which defaults to status='available' too and would
-        // otherwise leak into this list.
         final bookable = facilities
             .where((f) => f.isAvailable && f.capacity != null)
             .toList();
@@ -194,6 +184,7 @@ class _GuidelinesTab extends StatelessWidget {
     'Do not add, move, or remove furniture inside the discussion room.',
   ];
 
+  /// Builds the guidelines tab interface.
   @override
   Widget build(BuildContext context) {
     return SafeArea(

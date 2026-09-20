@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// A labelled dropdown used across the timetable-management forms —
-/// [value] is only shown as selected if it's actually present in [items]
-/// (async-loaded lists start empty, so a stale selection from a previous
-/// build never renders as chosen).
 class DropdownPickerField<T> extends StatelessWidget {
   const DropdownPickerField({
     super.key,
@@ -22,6 +18,7 @@ class DropdownPickerField<T> extends StatelessWidget {
   final String hint;
   final ValueChanged<T?> onChanged;
 
+  /// Builds the dropdown picker field interface.
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
@@ -40,8 +37,6 @@ class DropdownPickerField<T> extends StatelessWidget {
   }
 }
 
-/// A tappable field that opens [showTimePicker] and displays the chosen
-/// time, styled to match the dropdown fields around it.
 class TimePickerField extends StatelessWidget {
   const TimePickerField({
     super.key,
@@ -54,6 +49,7 @@ class TimePickerField extends StatelessWidget {
   final TimeOfDay time;
   final VoidCallback onTap;
 
+  /// Builds the time picker field interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

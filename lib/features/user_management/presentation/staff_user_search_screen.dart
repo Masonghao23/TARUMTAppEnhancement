@@ -8,6 +8,7 @@ import '../providers.dart';
 class StaffUserSearchScreen extends ConsumerStatefulWidget {
   const StaffUserSearchScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<StaffUserSearchScreen> createState() =>
       _StaffUserSearchScreenState();
@@ -17,12 +18,14 @@ class _StaffUserSearchScreenState extends ConsumerState<StaffUserSearchScreen> {
   final _searchController = TextEditingController();
   String _keyword = '';
 
+  /// Releases resources and subscriptions owned by this component.
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
+  /// Builds the staff user search screen interface.
   @override
   Widget build(BuildContext context) {
     final resultsAsync = ref.watch(userSearchProvider(_keyword));
@@ -102,6 +105,7 @@ class _UserResultTile extends StatelessWidget {
 
   final Profile profile;
 
+  /// Returns the display color for a user role.
   Color _roleColor(ColorScheme scheme) {
     switch (profile.role) {
       case UserRole.admin:
@@ -113,6 +117,7 @@ class _UserResultTile extends StatelessWidget {
     }
   }
 
+  /// Builds the user result tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

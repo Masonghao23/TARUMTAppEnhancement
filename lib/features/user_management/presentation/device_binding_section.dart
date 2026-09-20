@@ -9,6 +9,7 @@ import '../providers.dart';
 class DeviceBindingSection extends ConsumerStatefulWidget {
   const DeviceBindingSection({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<DeviceBindingSection> createState() =>
       _DeviceBindingSectionState();
@@ -17,6 +18,7 @@ class DeviceBindingSection extends ConsumerStatefulWidget {
 class _DeviceBindingSectionState extends ConsumerState<DeviceBindingSection> {
   bool _isBinding = false;
 
+  /// Binds the current device and refreshes the displayed binding.
   Future<void> _bind({bool force = false}) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
@@ -73,6 +75,7 @@ class _DeviceBindingSectionState extends ConsumerState<DeviceBindingSection> {
     }
   }
 
+  /// Displays a feedback message to the user.
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -80,6 +83,7 @@ class _DeviceBindingSectionState extends ConsumerState<DeviceBindingSection> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Formats the remaining device-binding cooldown.
   String _formatDuration(Duration duration) {
     final days = duration.inDays;
     if (days >= 1) return '$days day${days == 1 ? '' : 's'}';
@@ -88,6 +92,7 @@ class _DeviceBindingSectionState extends ConsumerState<DeviceBindingSection> {
     return '${duration.inMinutes} minute(s)';
   }
 
+  /// Builds the device binding section interface.
   @override
   Widget build(BuildContext context) {
     final deviceAsync = ref.watch(currentDeviceProvider);
@@ -125,6 +130,7 @@ class _DeviceCard extends StatelessWidget {
 
   final UserDevice? device;
 
+  /// Builds the device card interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
 
-/// Shows the add-vehicle dialog and, if confirmed, saves it and invalidates
-/// [myVehiclesProvider]. Returns true if a vehicle was added.
+/// Shows the vehicle form and saves the vehicle when confirmed.
 Future<bool> showAddVehicleDialog(BuildContext context, WidgetRef ref) async {
   final plateController = TextEditingController();
   final modelController = TextEditingController();

@@ -7,15 +7,10 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'manage_attendance_screen.dart';
 
-/// Every one of a lecturer's past (ended) class sessions, filterable by
-/// course and/or date — split out from the main Attendance tab, which now
-/// only shows the live session directly. Filtering happens server-side
-/// (see [AttendanceRepository.fetchSessionHistoryPage]) and loads a page at
-/// a time, so a filter always searches the full history rather than
-/// whatever a capped client-side snapshot happened to include.
 class SessionHistoryScreen extends ConsumerStatefulWidget {
   const SessionHistoryScreen({super.key});
 
+  /// Creates the mutable state for this widget.
   @override
   ConsumerState<SessionHistoryScreen> createState() =>
       _SessionHistoryScreenState();
@@ -33,12 +28,14 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
   bool _hasMore = true;
   bool _error = false;
 
+  /// Initializes state and starts this component’s setup.
   @override
   void initState() {
     super.initState();
     _load(reset: true);
   }
 
+  /// Loads a page of session history and updates pagination.
   Future<void> _load({required bool reset}) async {
     final lecturerId = ref.read(currentUserIdProvider);
     if (lecturerId == null) return;
@@ -79,6 +76,7 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
     }
   }
 
+  /// Opens a date picker and updates the selected date.
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -92,9 +90,11 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
     }
   }
 
+  /// Formats a date for display.
   String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
+  /// Builds the session history screen interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -226,6 +226,7 @@ class _CourseFilterDropdown extends StatelessWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
 
+  /// Builds the course filter dropdown interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -266,6 +267,7 @@ class _DateFilterButton extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onClear;
 
+  /// Builds the date filter button interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -313,6 +315,7 @@ class _EndedSessionTile extends StatelessWidget {
 
   final ClassSession session;
 
+  /// Formats a time for the timetable display.
   String _fmt(DateTime dt) {
     final local = dt.toLocal();
     final date =
@@ -322,6 +325,7 @@ class _EndedSessionTile extends StatelessWidget {
     return '$date · $time';
   }
 
+  /// Builds the ended session tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

@@ -6,12 +6,10 @@ import '../data/models.dart';
 import '../providers.dart';
 import 'upcoming_reservation_screen.dart';
 
-/// Lists every upcoming (not yet started) reservation, soonest first — the
-/// dashboard only ever surfaces the single soonest one as a banner, so this
-/// is the place to see (and drill into) the rest.
 class MyReservationsScreen extends ConsumerWidget {
   const MyReservationsScreen({super.key});
 
+  /// Builds the my reservations screen interface.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reservationsAsync = ref.watch(myParkingReservationsProvider);
@@ -48,6 +46,7 @@ class _ReservationTile extends StatelessWidget {
 
   final ParkingReservation reservation;
 
+  /// Builds the reservation tile interface.
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;

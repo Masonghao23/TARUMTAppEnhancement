@@ -1,5 +1,6 @@
 enum SessionStatus { active, ended }
 
+/// Converts a stored session status to its enum value.
 SessionStatus _sessionStatusFromString(String value) {
   return value == 'ended' ? SessionStatus.ended : SessionStatus.active;
 }
@@ -11,6 +12,7 @@ class Course {
     required this.courseName,
   });
 
+  /// Creates course data from a database row.
   factory Course.fromMap(Map<String, dynamic> map) {
     return Course(
       id: map['id'] as String,
@@ -23,6 +25,7 @@ class Course {
   final String courseCode;
   final String courseName;
 
+  /// Returns the display label for this value.
   String get label => '$courseCode — $courseName';
 }
 
@@ -36,6 +39,7 @@ class Facility {
     this.buildingName,
   });
 
+  /// Creates facility data from a database row.
   factory Facility.fromMap(Map<String, dynamic> map) {
     final building = map['buildings'] as Map<String, dynamic>?;
     return Facility(
@@ -55,13 +59,11 @@ class Facility {
   final int radiusMeters;
   final String? buildingName;
 
+  /// Returns the display label for this value.
   String get label =>
       buildingName == null ? roomName : '$buildingName · $roomName';
 }
 
-/// A live/ended class session. [courseName]/[roomName] are only populated
-/// when fetched through a query that embeds `courses`/`facilities` — plain
-/// insert/update responses leave them null.
 class ClassSession {
   const ClassSession({
     required this.id,
@@ -76,6 +78,7 @@ class ClassSession {
     this.roomName,
   });
 
+  /// Creates class session data from a database row.
   factory ClassSession.fromMap(Map<String, dynamic> map) {
     final course = map['courses'] as Map<String, dynamic>?;
     final facility = map['facilities'] as Map<String, dynamic>?;
@@ -109,6 +112,7 @@ class ClassSession {
 
 enum AttendanceStatus { present, late, absent, leave, pending }
 
+/// Converts a stored attendance status to its enum value.
 AttendanceStatus attendanceStatusFromString(String value) {
   switch (value) {
     case 'late':
@@ -125,8 +129,10 @@ AttendanceStatus attendanceStatusFromString(String value) {
 }
 
 extension AttendanceStatusLabel on AttendanceStatus {
+  /// Returns the value used to store this status.
   String get wireValue => name;
 
+  /// Returns the display label for this value.
   String get label {
     switch (this) {
       case AttendanceStatus.present:
@@ -143,12 +149,6 @@ extension AttendanceStatusLabel on AttendanceStatus {
   }
 }
 
-/// One enrolled student's attendance status for a specific session, as
-/// returned by get_session_roster() — a real recorded row when
-/// [recordedAt] is non-null, otherwise a value computed server-side
-/// ('absent' once the session has ended and the student never scanned,
-/// 'pending' while it's still live). [isManual] distinguishes a lecturer's
-/// override from a genuine QR scan.
 class RosterEntry {
   const RosterEntry({
     required this.studentId,
@@ -158,6 +158,7 @@ class RosterEntry {
     this.recordedAt,
   });
 
+  /// Creates roster entry data from a database row.
   factory RosterEntry.fromMap(Map<String, dynamic> map) {
     return RosterEntry(
       studentId: map['student_id'] as String,
@@ -190,6 +191,7 @@ class AttendanceRecord {
     this.distanceMeters,
   });
 
+  /// Creates attendance record data from a database row.
   factory AttendanceRecord.fromMap(Map<String, dynamic> map) {
     return AttendanceRecord(
       id: map['id'] as String,
@@ -213,8 +215,6 @@ class AttendanceRecord {
   final double? distanceMeters;
 }
 
-/// One row of a student's attendance history, joined with the module name
-/// and start time of the session it belongs to.
 class AttendanceHistoryEntry {
   const AttendanceHistoryEntry({
     required this.record,
@@ -222,6 +222,7 @@ class AttendanceHistoryEntry {
     this.sessionStartTime,
   });
 
+  /// Creates attendance history entry data from a database row.
   factory AttendanceHistoryEntry.fromMap(Map<String, dynamic> map) {
     final session = map['class_sessions'] as Map<String, dynamic>?;
     final course = session?['courses'] as Map<String, dynamic>?;
@@ -239,9 +240,6 @@ class AttendanceHistoryEntry {
   final DateTime? sessionStartTime;
 }
 
-/// Decoded response of the `submit_attendance` RPC — every check-in rule
-/// (enrollment, token freshness, geofence, device binding) is enforced
-/// server-side, so the client only ever renders whatever comes back here.
 class AttendanceResult {
   const AttendanceResult({
     required this.success,
@@ -250,6 +248,7 @@ class AttendanceResult {
     this.distanceMeters,
   });
 
+  /// Creates attendance result data from a database row.
   factory AttendanceResult.fromMap(Map<String, dynamic> map) {
     return AttendanceResult(
       success: map['success'] as bool? ?? false,
@@ -269,6 +268,7 @@ class AttendanceResult {
 
 enum SessionSlotType { lecture, tutorial, practical }
 
+/// Converts a stored session type to its enum value.
 SessionSlotType _slotTypeFromString(String value) {
   switch (value) {
     case 'tutorial':
@@ -282,6 +282,7 @@ SessionSlotType _slotTypeFromString(String value) {
 
 enum TimetableOccurrenceStatus { normal, cancelled, movedAway, movedIn, added }
 
+/// Converts a stored timetable status to its enum value.
 TimetableOccurrenceStatus _occurrenceStatusFromString(String value) {
   switch (value) {
     case 'cancelled':
@@ -297,12 +298,10 @@ TimetableOccurrenceStatus _occurrenceStatusFromString(String value) {
   }
 }
 
-/// An hour:minute wall-clock value, as returned by Postgres `time` columns
-/// ("HH:MM:SS" over PostgREST) — deliberately not a DateTime, since these
-/// are schedule-of-day values with no date attached.
 class WallClockTime {
   const WallClockTime(this.hour, this.minute);
 
+  /// Parses a stored time into hours and minutes.
   factory WallClockTime.parse(String raw) {
     final parts = raw.split(':');
     return WallClockTime(int.parse(parts[0]), int.parse(parts[1]));
@@ -311,13 +310,10 @@ class WallClockTime {
   final int hour;
   final int minute;
 
+  /// Returns the time as a fractional number of hours.
   double get decimalHours => hour + minute / 60;
 }
 
-/// One occurrence of a scheduled class within a single Mon-Sun week, as
-/// returned by get_my_timetable_week() — recurrence/exception handling all
-/// happens server-side, so the client only ever renders whatever comes
-/// back here.
 class TimetableOccurrence {
   const TimetableOccurrence({
     required this.occurrenceDate,
@@ -341,6 +337,7 @@ class TimetableOccurrence {
     this.exceptionId,
   });
 
+  /// Creates timetable occurrence data from a database row.
   factory TimetableOccurrence.fromMap(Map<String, dynamic> map) {
     return TimetableOccurrence(
       occurrenceDate: DateTime.parse(map['occurrence_date'] as String),
@@ -368,10 +365,6 @@ class TimetableOccurrence {
       movedToRoomId: map['moved_to_room_id'] as String?,
       movedToRoomName: map['moved_to_room_name'] as String?,
       movedToBuildingName: map['moved_to_building_name'] as String?,
-      // Only present in get_lecturer_occurrences' management-facing
-      // output — get_my_timetable_week (student-facing) doesn't return
-      // these columns at all, so they parse to null there, which is
-      // correct: students have no use for them.
       scheduleId: map['schedule_id'] as String?,
       exceptionId: map['exception_id'] as String?,
     );
@@ -397,18 +390,14 @@ class TimetableOccurrence {
   final String? scheduleId;
   final String? exceptionId;
 
+  /// Returns the occurrence’s duration in hours.
   double get durationHours => endTime.decimalHours - startTime.decimalHours;
 
-  /// "Building · Room", or just the room if the facility has no building
-  /// (matches the shared facilities table's nullable building_id).
+  /// Returns the room label with its building name when available.
   String get locationLabel =>
       buildingName == null ? roomName : '$buildingName · $roomName';
 }
 
-/// The shared term window every class_schedule row currently uses —
-/// effective_from is Monday-aligned (see timetable_seed.sql) so "Week N" in
-/// the student-facing UI can be computed as a plain day-count from it,
-/// without needing partial-week handling.
 class TermInfo {
   const TermInfo({required this.effectiveFrom, required this.termWeeks});
 
@@ -416,12 +405,6 @@ class TermInfo {
   final int termWeeks;
 }
 
-/// One of a lecturer's own timetable slots for a specific date, as returned
-/// by get_lecturer_schedule_for_date() — already excludes anything that's
-/// been moved away or cancelled for that date, so every row here is really
-/// startable. [sessionId] is populated when a class_sessions row already
-/// exists for it (tap should open that session instead of starting a new
-/// one).
 class LecturerSlot {
   const LecturerSlot({
     required this.scheduleId,
@@ -438,6 +421,7 @@ class LecturerSlot {
     this.sessionStatus,
   });
 
+  /// Creates lecturer slot data from a database row.
   factory LecturerSlot.fromMap(Map<String, dynamic> map) {
     return LecturerSlot(
       scheduleId: map['schedule_id'] as String?,
@@ -470,10 +454,10 @@ class LecturerSlot {
   final String? sessionId;
   final String? sessionStatus;
 
+  /// Returns whether this timetable occurrence has a session.
   bool get isStarted => sessionId != null;
 }
 
-/// Decoded response of the start_scheduled_session RPC.
 class StartSessionResult {
   const StartSessionResult({
     required this.success,
@@ -482,6 +466,7 @@ class StartSessionResult {
     this.reason,
   });
 
+  /// Creates start session result data from a database row.
   factory StartSessionResult.fromMap(Map<String, dynamic> map) {
     return StartSessionResult(
       success: map['success'] as bool? ?? false,
@@ -497,16 +482,13 @@ class StartSessionResult {
   final String? reason;
 }
 
-/// Hour-based attendance for one student/course, from
-/// calculate_course_attendance_hours() — [totalHours] is the scheduled
-/// hours of every occurrence that's already passed, [attendedHours] the
-/// subset of those the student actually attended.
 class CourseAttendanceHours {
   const CourseAttendanceHours({
     required this.attendedHours,
     required this.totalHours,
   });
 
+  /// Creates course attendance hours data from a database row.
   factory CourseAttendanceHours.fromMap(Map<String, dynamic> map) {
     return CourseAttendanceHours(
       attendedHours: (map['attended_hours'] as num).toDouble(),
@@ -517,15 +499,11 @@ class CourseAttendanceHours {
   final double attendedHours;
   final double totalHours;
 
-  /// Null (rather than 0) when nothing has happened yet to have a
-  /// percentage at all — callers should show a placeholder, not "0%".
+  /// Returns the attendance percentage, or null when no hours are scheduled.
   double? get percent =>
       totalHours <= 0 ? null : (attendedHours / totalHours) * 100;
 }
 
-/// One recurring weekly slot a lecturer owns, as edited on the Manage
-/// Timetable screen — distinct from [LecturerSlot], which is a specific
-/// day's occurrence rather than the recurring template itself.
 class ScheduleSlot {
   const ScheduleSlot({
     required this.id,
@@ -540,6 +518,7 @@ class ScheduleSlot {
     required this.roomName,
   });
 
+  /// Creates schedule slot data from a database row.
   factory ScheduleSlot.fromMap(Map<String, dynamic> map) {
     final course = map['courses'] as Map<String, dynamic>?;
     final facility = map['facilities'] as Map<String, dynamic>?;
@@ -571,10 +550,10 @@ class ScheduleSlot {
   final String roomName;
 }
 
-/// Decoded response of upsert_class_schedule/create_schedule_exception.
 class ScheduleActionResult {
   const ScheduleActionResult({required this.success, this.reason, this.id});
 
+  /// Creates schedule action result data from a database row.
   factory ScheduleActionResult.fromMap(Map<String, dynamic> map) {
     return ScheduleActionResult(
       success: map['success'] as bool? ?? false,
@@ -588,10 +567,10 @@ class ScheduleActionResult {
   final String? id;
 }
 
-/// Decoded {session_id, token} payload from a scanned QR code.
 class ScannedSessionToken {
   const ScannedSessionToken({required this.sessionId, required this.token});
 
+  /// Decodes a scanned attendance payload, returning null if invalid.
   static ScannedSessionToken? tryParse(String raw) {
     final parts = raw.split('|');
     if (parts.length != 2) return null;
@@ -601,11 +580,13 @@ class ScannedSessionToken {
   final String sessionId;
   final String token;
 
+  /// Encodes the session ID and token as a QR payload.
   String encode() => '$sessionId|$token';
 }
 
 enum RescheduleRequestStatus { pending, approved, rejected, withdrawn }
 
+/// Converts a stored request status to its enum value.
 RescheduleRequestStatus _requestStatusFromString(String value) {
   switch (value) {
     case 'approved':
@@ -619,12 +600,6 @@ RescheduleRequestStatus _requestStatusFromString(String value) {
   }
 }
 
-/// A lecturer's request to move or cancel one occurrence of their own
-/// recurring slot, awaiting admin approval — see
-/// reschedule_requests_schema.sql. RLS already scopes what a caller can
-/// see (their own requests, or everything if admin), so the same fetch —
-/// and the same model — serves both "My Requests" (staff) and the review
-/// queue (admin); the UI decides which actions to show based on role.
 class RescheduleRequest {
   const RescheduleRequest({
     required this.id,
@@ -650,6 +625,7 @@ class RescheduleRequest {
     this.reviewComment,
   });
 
+  /// Creates reschedule request data from a database row.
   factory RescheduleRequest.fromMap(Map<String, dynamic> map) {
     final course = map['courses'] as Map<String, dynamic>?;
     final schedule = map['class_schedule'] as Map<String, dynamic>?;
@@ -701,13 +677,11 @@ class RescheduleRequest {
   final String courseName;
   final SessionSlotType sessionType;
 
-  /// 'move' or 'cancel'.
   final String exceptionType;
   final WallClockTime originalStartTime;
   final WallClockTime originalEndTime;
   final String originalRoomName;
 
-  /// Only set when [exceptionType] is 'move'.
   final DateTime? newDate;
   final WallClockTime? newStartTime;
   final WallClockTime? newEndTime;
@@ -722,11 +696,6 @@ class RescheduleRequest {
   final DateTime createdAt;
 }
 
-/// One course's roll-up for the staff Attendance charts screen — it names
-/// the course in the picker and feeds the headline figures above it.
-/// [attendancePercent] is hour-weighted across every enrolled student
-/// (sum attended / sum total), so it agrees with the figure each student
-/// sees for themselves and with the 80% notification threshold.
 class CourseAttendanceSummary {
   const CourseAttendanceSummary({
     required this.courseId,
@@ -738,6 +707,7 @@ class CourseAttendanceSummary {
     required this.attendancePercent,
   });
 
+  /// Creates course attendance summary data from a database row.
   factory CourseAttendanceSummary.fromMap(Map<String, dynamic> map) {
     return CourseAttendanceSummary(
       courseId: map['course_id'] as String,
@@ -757,13 +727,9 @@ class CourseAttendanceSummary {
   final double attendedHours;
   final double totalHours;
 
-  /// Null when no hours have been scheduled yet — shown as "—", never 0%.
   final double? attendancePercent;
 }
 
-/// One point on a course's attendance trend — a single session that was
-/// actually held. Within one session every student shares the same
-/// duration, so this is plain attended/enrolled rather than hour-weighted.
 class AttendanceTrendPoint {
   const AttendanceTrendPoint({
     required this.sessionId,
@@ -774,6 +740,7 @@ class AttendanceTrendPoint {
     required this.attendancePercent,
   });
 
+  /// Creates attendance trend point data from a database row.
   factory AttendanceTrendPoint.fromMap(Map<String, dynamic> map) {
     return AttendanceTrendPoint(
       sessionId: map['session_id'] as String,
@@ -788,15 +755,12 @@ class AttendanceTrendPoint {
   final String sessionId;
   final DateTime sessionDate;
 
-  /// Null on sessions created before session_type existed on class_sessions.
   final String? sessionType;
   final int enrolledCount;
   final int attendedCount;
   final double? attendancePercent;
 }
 
-/// One enrolled student's standing in a single course — the unit behind
-/// both the pass/at-risk pie and the detail list under it.
 class CourseStudentAttendance {
   const CourseStudentAttendance({
     required this.studentId,
@@ -806,6 +770,7 @@ class CourseStudentAttendance {
     required this.attendancePercent,
   });
 
+  /// Creates course student attendance data from a database row.
   factory CourseStudentAttendance.fromMap(Map<String, dynamic> map) {
     return CourseStudentAttendance(
       studentId: map['student_id'] as String,
@@ -821,13 +786,13 @@ class CourseStudentAttendance {
   final double attendedHours;
   final double totalHours;
 
-  /// Null when the course has no scheduled hours yet — such a student
-  /// counts as neither meeting nor missing the requirement.
   final double? attendancePercent;
 
+  /// Returns whether attendance meets the required percentage.
   bool get meetsThreshold =>
       attendancePercent != null && attendancePercent! >= 80;
 
+  /// Returns whether attendance falls below the required percentage.
   bool get isBelowThreshold =>
       attendancePercent != null && attendancePercent! < 80;
 }

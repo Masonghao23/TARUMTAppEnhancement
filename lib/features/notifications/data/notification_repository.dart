@@ -7,20 +7,14 @@ class NotificationRepository {
 
   final SupabaseClient _client;
 
-  /// Registers this device's FCM token against the signed-in user — a
-  /// no-op if nobody's signed in yet. Goes through claim_fcm_token (security
-  /// definer) rather than a plain upsert: a device token is only ever
-  /// meaningful for whoever's currently signed in on it, but RLS stops a
-  /// client from clearing a *different* user's row for the same token —
-  /// so a straight upsert would leave a previous account on this device
-  /// still registered, and both would get pushed on every send. The RPC
-  /// atomically drops any other owner's claim on this exact token first.
+  /// Registers the device’s FCM token for the signed-in user.
   Future<void> registerFcmToken(String token) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
     await _client.rpc('claim_fcm_token', params: {'p_token': token});
   }
 
+  /// Fetches the signed-in user’s recent notifications.
   Future<List<AppNotification>> fetchMyNotifications() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return [];
@@ -33,6 +27,7 @@ class NotificationRepository {
     return rows.map(AppNotification.fromMap).toList();
   }
 
+  /// Marks a notification as read.
   Future<void> markNotificationRead(String notificationId) async {
     await _client
         .from('notifications')
@@ -40,13 +35,12 @@ class NotificationRepository {
         .eq('id', notificationId);
   }
 
+  /// Deletes the selected notification.
   Future<void> deleteNotification(String notificationId) async {
     await _client.from('notifications').delete().eq('id', notificationId);
   }
 
-  /// No row yet (never opened this screen before) means every toggle is
-  /// still effectively on — [NotificationPreferences.defaults] mirrors the
-  /// database column defaults exactly.
+  /// Fetches notification preferences or returns their defaults.
   Future<NotificationPreferences> fetchMyPreferences() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return NotificationPreferences.defaults;
@@ -59,6 +53,7 @@ class NotificationRepository {
     return NotificationPreferences.fromMap(rows.first);
   }
 
+  /// Saves the user’s notification preferences.
   Future<void> updatePreferences(NotificationPreferences prefs) async {
     await _client.rpc(
       'upsert_notification_preferences',
@@ -72,9 +67,7 @@ class NotificationRepository {
     );
   }
 
-  /// Use case 4.2.4 "Broadcast Announcement" — staff/admin only (enforced
-  /// again inside the RPC). p_target is 'students', 'staff' (covers
-  /// staff+admin), or 'all'.
+  /// Sends an announcement to the selected audience.
   Future<BroadcastResult> sendBroadcastAnnouncement({
     required String title,
     required String message,

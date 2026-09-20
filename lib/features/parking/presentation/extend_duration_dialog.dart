@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/parking_repository.dart';
 
-/// Shared +1/+2/+3 hour picker for extending a reservation — used by both
-/// the active-session screen and the upcoming-reservation screen. This only
-/// offers the choices and their preview cost; extend_parking_reservation on
-/// the server is the actual authority on whether an extension is allowed
-/// (no overlap with another booking, stays before midnight).
+/// Shows the reservation extension picker and returns the selected hours.
 Future<int?> showExtendHoursDialog(BuildContext context) {
   return showDialog<int>(
     context: context,
