@@ -39,6 +39,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Pushes sent without an explicit channel land here. The channel is
+             created at runtime with max importance (see
+             PushNotificationService), which is what makes Android show a
+             heads-up banner instead of filing the push quietly. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
